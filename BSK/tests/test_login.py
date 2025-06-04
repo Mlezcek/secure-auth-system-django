@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.timezone import now
+from django.core import mail
 from BSK.models import LoginAttempt
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -33,6 +34,19 @@ class LoginViewTest(TestCase):
             user=self.user,
             success=True
         ).exists())
+
+    def test_alert_on_new_ip(self):
+        self.client.post('/login/', {
+            'username': 'testuser',
+            'password': 'test123'
+        }, REMOTE_ADDR='1.1.1.1')
+        mail.outbox = []
+        self.client.post('/login/', {
+            'username': 'testuser',
+            'password': 'test123'
+        }, REMOTE_ADDR='2.2.2.2')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Nowe logowanie', mail.outbox[0].subject)
 
     def test_incorrect_password(self):
         response = self.client.post('/login/', {
@@ -71,3 +85,6 @@ class LoginViewTest(TestCase):
         # Assert appropriate message is shown
         response = self.client.post('/login/', login_data)
         self.assertContains(response, 'Konto zablokowane')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Konto zablokowane', mail.outbox[0].subject)
+

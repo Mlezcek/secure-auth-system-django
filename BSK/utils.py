@@ -10,6 +10,7 @@ from .models import (
 )
 
 from BSK import settings
+from .mail import send_account_blocked_email
 
 MAX_FAILED_ATTEMPTS = 5
 BLOCK_DURATION_MINUTES = 15
@@ -18,7 +19,9 @@ BLOCK_DURATION_MINUTES = 15
 
 
 def verify_recaptcha(token: str):
-    secret = getattr(settings, "RECAPTCHA_SECRET_KEY", None)
+    secret = getattr(settings, "RECAPTCHA_SECRET_KEY", None) or os.environ.get(
+        "RECAPTCHA_SECRET_KEY"
+    )
     print("[RECAPTCHA DEBUG] SECRET:", secret)
     print("[RECAPTCHA DEBUG] TOKEN:", token)
 
@@ -46,7 +49,7 @@ def verify_recaptcha(token: str):
         return False
 
 
-def check_and_handle_blocking(user, success):
+def check_and_handle_blocking(user, success, ip_address=None, user_agent=""):
     if success:
         user.failed_attempts = 0
         user.blocked_until = None
@@ -57,9 +60,16 @@ def check_and_handle_blocking(user, success):
     # Failed login attempt
     user.failed_attempts += 1
     if user.failed_attempts >= MAX_FAILED_ATTEMPTS:
-        user.blocked_until = now() + timedelta(minutes=BLOCK_DURATION_MINUTES)
-        user.is_blocked = True
-    user.save()
+        if not user.is_blocked:
+            user.blocked_until = now() + timedelta(minutes=BLOCK_DURATION_MINUTES)
+            user.is_blocked = True
+            user.save()
+            if user.email:
+                send_account_blocked_email(user, ip_address)
+        else:
+            user.save()
+    else:
+        user.save()
 
     if user.blocked_until and user.blocked_until > now():
         return 'Konto zablokowane'

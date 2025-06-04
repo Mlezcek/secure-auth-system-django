@@ -4,6 +4,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse, Http404
 
+from .mail import send_new_login_email, send_password_reset_email
+
 User = get_user_model()
 
 from django.shortcuts import redirect, render
@@ -15,6 +17,7 @@ from .utils import check_and_handle_blocking, verify_recaptcha
 from .utils import check_and_handle_blocking, process_password_reset
 
 from django.conf import settings
+from django.urls import reverse
 import uuid
 
 class LoginView(View):
@@ -30,7 +33,12 @@ class LoginView(View):
         user = User.objects.filter(login=login_input).first()
 
         if user:
-            block_message = check_and_handle_blocking(user, success=False)
+            block_message = check_and_handle_blocking(
+                user,
+                success=False,
+                ip_address=ip,
+                user_agent=user_agent,
+            )
             if block_message:
                 return render(request, 'login.html', {'error': block_message})
 
@@ -50,11 +58,14 @@ class LoginView(View):
 
             check_and_handle_blocking(auth_user, success=True)
 
+            new_ip = not LoginEvent.objects.filter(user=auth_user, ip_address=ip).exists()
             LoginEvent.objects.create(
                 user=auth_user,
                 ip_address=ip,
-                user_agent=user_agent
+                user_agent=user_agent,
             )
+            if new_ip and auth_user.email:
+                send_new_login_email(auth_user, ip)
 
             return redirect('dashboard')
 
@@ -95,6 +106,10 @@ class PasswordResetRequestView(View):
             )
 
             print(f"Reset link: http://localhost:8000/reset/{token}/")
+            reset_link = request.build_absolute_uri(
+                reverse("password_reset_confirm", args=[token])
+            )
+            send_password_reset_email(user, reset_link)
 
         return render(request, 'password_reset_requested.html')
 

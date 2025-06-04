@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.timezone import now, timedelta
+from django.core import mail
 from django.contrib.auth import get_user_model
 from unittest.mock import patch
 from BSK.models import (
@@ -37,6 +38,9 @@ class PasswordResetTest(TestCase):
         # Assert reset token is created for the user
         self.assertTrue(ResetPasswordToken.objects.filter(user=self.user).exists())
         self.assertTrue(PasswordResetTokenEvent.objects.filter(user=self.user).exists())
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('/reset/', mail.outbox[0].body)
 
         @patch('BSK.views.verify_recaptcha', return_value=False)
         def test_no_token_when_captcha_fails(self, mock_captcha):
