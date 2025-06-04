@@ -3,8 +3,14 @@ from django.urls import reverse
 from django.utils.timezone import now, timedelta
 from django.contrib.auth import get_user_model
 from unittest.mock import patch
-from BSK.models import ResetPasswordToken
+from BSK.models import (
+    ResetPasswordToken,
+    PasswordResetTokenEvent,
+    PasswordResetEvent,
+)
 import uuid
+
+
 
 User = get_user_model()
 
@@ -30,6 +36,7 @@ class PasswordResetTest(TestCase):
 
         # Assert reset token is created for the user
         self.assertTrue(ResetPasswordToken.objects.filter(user=self.user).exists())
+        self.assertTrue(PasswordResetTokenEvent.objects.filter(user=self.user).exists())
 
         @patch('BSK.views.verify_recaptcha', return_value=False)
         def test_no_token_when_captcha_fails(self, mock_captcha):
@@ -52,7 +59,7 @@ class PasswordResetTest(TestCase):
 
         # Submit new password using valid token
         response = self.client.post(f'/reset/{token.token}/', {
-            'new_password': 'newpassword123'
+            'new_password': 'Str0ng!Pass'
         })
 
         # Assert response is successful
@@ -60,11 +67,35 @@ class PasswordResetTest(TestCase):
 
         # Refresh and assert user's password is updated
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('newpassword123'))
+        self.assertTrue(self.user.check_password('Str0ng!Pass'))
 
         # Refresh and assert token is marked as used
         token.refresh_from_db()
         self.assertTrue(token.is_used)
+
+        self.assertTrue(PasswordResetEvent.objects.filter(user=self.user).exists())
+
+    def test_rejects_weak_password(self):
+        token = ResetPasswordToken.objects.create(
+            user=self.user,
+            token=str(uuid.uuid4()),
+            expires_at=now() + timedelta(minutes=15)
+        )
+
+        response = self.client.post(f'/reset/{token.token}/', {
+            'new_password': 'weak'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hasło nie spełnia wymagań')
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.check_password('weak'))
+
+        token.refresh_from_db()
+        self.assertFalse(token.is_used)
+
+        self.assertFalse(PasswordResetEvent.objects.filter(user=self.user).exists())
 
 
 

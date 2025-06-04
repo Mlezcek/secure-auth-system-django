@@ -10,8 +10,9 @@ from django.shortcuts import redirect, render
 from django.utils.timezone import now
 from django.views import View
 
-from .models import LoginAttempt, LoginEvent, ResetPasswordToken
+from .models import LoginAttempt, LoginEvent, ResetPasswordToken, PasswordResetTokenEvent
 from .utils import check_and_handle_blocking, verify_recaptcha
+from .utils import check_and_handle_blocking, process_password_reset
 
 from django.conf import settings
 import uuid
@@ -85,6 +86,14 @@ class PasswordResetRequestView(View):
                 expires_at=expires
             )
 
+            ip = get_client_ip(request)
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            PasswordResetTokenEvent.objects.create(
+                user=user,
+                ip_address=ip,
+                user_agent=user_agent,
+            )
+
             print(f"Reset link: http://localhost:8000/reset/{token}/")
 
         return render(request, 'password_reset_requested.html')
@@ -103,12 +112,20 @@ class PasswordResetConfirmView(View):
             raise Http404("Token jest nieprawidłowy lub wygasł.")
 
         new_password = request.POST.get('new_password')
-        user = reset_token.user
-        user.set_password(new_password)
-        user.save()
+        ip = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        success, error = process_password_reset(
+            reset_token,
+            new_password,
+            ip,
+            user_agent,
+        )
 
-        reset_token.is_used = True
-        reset_token.save()
+        if not success:
+            return render(request, 'password_reset_confirm.html', {
+                'token': token,
+                'error': error
+            })
 
         return render(request, 'password_reset_complete.html')
 

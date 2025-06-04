@@ -4,7 +4,10 @@ import json
 import urllib.request
 import urllib.parse
 import re
-from .models import ResetPasswordToken
+from .models import (
+    ResetPasswordToken,
+    PasswordResetEvent,
+)
 
 from BSK import settings
 
@@ -63,3 +66,43 @@ def check_and_handle_blocking(user, success):
 
     return None
 
+
+def is_strong_password(password: str):
+    if len(password) < 8:
+        return False
+    if not re.search(r"[A-Z]", password):
+        return False
+    if not re.search(r"[a-z]", password):
+        return False
+    if not re.search(r"\d", password):
+        return False
+    if not re.search(r"[^A-Za-z0-9]", password):
+        return False
+    return True
+
+
+def process_password_reset(
+    reset_token: ResetPasswordToken,
+    new_password: str,
+    ip_address: str | None = None,
+    user_agent: str = "",
+):
+    if not reset_token or not reset_token.is_valid():
+        return False, "Token jest nieprawidłowy lub wygasł."
+
+    if not is_strong_password(new_password):
+        return False, "Hasło nie spełnia wymagań bezpieczeństwa."
+
+    user = reset_token.user
+    user.set_password(new_password)
+    user.save()
+
+    reset_token.is_used = True
+    reset_token.save()
+
+    PasswordResetEvent.objects.create(
+        user=user,
+        ip_address=ip_address or "0.0.0.0",
+        user_agent=user_agent,
+    )
+    return True, None
