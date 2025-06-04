@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils.timezone import now, timedelta
 from django.contrib.auth import get_user_model
+from unittest.mock import patch
 from BSK.models import ResetPasswordToken
 import uuid
 
@@ -17,15 +18,29 @@ class PasswordResetTest(TestCase):
             password='test123'
         )
 
-    def test_creates_reset_token_for_valid_email(self):
-        # Submit password reset request with valid email
-        response = self.client.post('/password_reset/', {'email': 'test@test.com'})
+    @patch('BSK.views.verify_recaptcha', return_value=True)
+    def test_creates_reset_token_for_valid_email(self, mock_captcha):
+        response = self.client.post('/password_reset/', {
+            'email': 'test@test.com',
+            'g-recaptcha-response': 'dummy'
+        })
 
         # Assert response is successful
         self.assertEqual(response.status_code, 200)
 
         # Assert reset token is created for the user
         self.assertTrue(ResetPasswordToken.objects.filter(user=self.user).exists())
+
+        @patch('BSK.views.verify_recaptcha', return_value=False)
+        def test_no_token_when_captcha_fails(self, mock_captcha):
+            response = self.client.post('/password_reset/', {
+                'email': 'test@test.com',
+                'g-recaptcha-response': 'dummy'
+            })
+
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(ResetPasswordToken.objects.filter(user=self.user).exists())
+            self.assertContains(response, 'Niepoprawna weryfikacja captcha.')
 
     def test_resets_password_with_valid_token(self):
         # Manually create a valid reset token

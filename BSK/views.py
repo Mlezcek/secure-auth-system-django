@@ -11,7 +11,9 @@ from django.utils.timezone import now
 from django.views import View
 
 from .models import LoginAttempt, LoginEvent, ResetPasswordToken
-from .utils import check_and_handle_blocking
+from .utils import check_and_handle_blocking, verify_recaptcha
+
+from django.conf import settings
 import uuid
 
 class LoginView(View):
@@ -60,9 +62,17 @@ class LoginView(View):
         })
 class PasswordResetRequestView(View):
     def get(self, request):
-        return render(request, 'password_reset_request.html')
+        context = {'site_key': settings.RECAPTCHA_SITE_KEY}
+        return render(request, 'password_reset_request.html', context)
 
     def post(self, request):
+        captcha = request.POST.get('g-recaptcha-response')
+        if not verify_recaptcha(captcha):
+            context = {
+                'error': 'Niepoprawna weryfikacja captcha.',
+                'site_key': settings.RECAPTCHA_SITE_KEY
+            }
+            return render(request, 'password_reset_request.html', context)
         email = request.POST.get('email')
         user = User.objects.filter(email=email).first()
 
