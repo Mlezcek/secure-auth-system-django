@@ -10,8 +10,9 @@ urlpatterns = [
     path('admin/blocked_users/', BlockedUsersAdminView.as_view(), name='blocked_users'),
     path('password_reset/', PasswordResetRequestView.as_view(), name='password_reset'),
     path('reset/<str:token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    path('admin/blocked_ips/', BlockedIPsAdminView.as_view(), name='blocked_ips')
+    path('admin/blocked_ips/', BlockedIPsAdminView.as_view(), name='blocked_ips'),
     path('mfa/setup/', MFASetupView.as_view(), name='mfa_setup'),
     path('mfa/verify/', MFAVerifyView.as_view(), name='mfa_verify'),
+
 
 ]
