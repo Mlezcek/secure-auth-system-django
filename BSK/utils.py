@@ -12,6 +12,8 @@ from .models import (
 from BSK import settings
 from .mail import send_account_blocked_email
 
+from .hibp_utils import is_password_pwned
+
 MAX_FAILED_ATTEMPTS = 5
 BLOCK_DURATION_MINUTES = 15
 
@@ -103,8 +105,12 @@ def process_password_reset(
     if not is_strong_password(new_password):
         return False, "Hasło nie spełnia wymagań bezpieczeństwa."
 
+    if is_password_pwned(new_password):
+        return False, "To hasło zostało znalezione w znanych wyciekach. Wybierz inne hasło."
+
     user = reset_token.user
     user.set_password(new_password)
+    user.must_change_password = False  # jeśli stosujesz ten mechanizm
     user.save()
 
     reset_token.is_used = True
