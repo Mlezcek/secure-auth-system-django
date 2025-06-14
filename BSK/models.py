@@ -27,7 +27,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_blocked = models.BooleanField(default=False)
     blocked_until = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
+
     mfa_enabled = models.BooleanField(default=False)
+    mfa_secret = models.CharField(max_length=32, blank=True, null=True)
 
     USERNAME_FIELD = 'login'
     REQUIRED_FIELDS = ['email']
@@ -109,3 +111,14 @@ class TrustedDevice(models.Model):
     last_used = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(default=timezone.now)
     is_active = models.BooleanField(default=True)
+
+class BlockedIP(models.Model):
+    ip_address = models.GenericIPAddressField(unique=True)
+    blocked_until = models.DateTimeField()
+
+    def is_blocked(self):
+        from django.utils.timezone import now
+        return self.blocked_until > now()
+
+    def __str__(self):
+        return f"{self.ip_address} blocked until {self.blocked_until}"
