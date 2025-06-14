@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Kody zapasowe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen py-10 px-4">
+
+<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-md">
+  <h2 class="text-2xl font-bold mb-4 text-blue-700">Kody zapasowe</h2>
+
+  <p class="text-sm text-gray-700 mb-4">
+    Kody zapasowe pozwalają na logowanie bez aplikacji uwierzytelniającej. Każdy kod działa tylko raz.
+    Przechowuj je bezpiecznie (np. w menedżerze haseł).
+  </p>
+
+  <div class="bg-gray-50 p-4 rounded mb-4">
+    <p>Aktywnych kodów: <strong>{{ active_count }}</strong></p>
+    <p>Zużytych kodów: <strong>{{ used_count }}</strong></p>
+    <p>Ostatnie wygenerowanie: {{ last_generated|date:"Y-m-d H:i" }}</p>
+    <p>Ostatnie użycie: {{ last_used|date:"Y-m-d H:i" }}</p>
+  </div>
+
+  <button onclick="generateCodes()"
+          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
+          {% if cooldown %}disabled{% endif %}>
+    Wygeneruj nowe kody zapasowe
+  </button>
+
+  <div id="errorMsg" class="text-red-600 text-sm mt-3 hidden"></div>
+</div>
+
+<!-- Modal -->
+<div id="codesModal" class="fixed hidden inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md text-center">
+    <h3 class="text-lg font-bold mb-2">Twoje nowe kody zapasowe</h3>
+    <p class="text-sm text-gray-600 mb-4">Zapisz je — nie będą więcej dostępne!</p>
+    <ul id="codesList" class="bg-gray-100 p-4 font-mono text-sm text-left rounded space-y-1 max-h-60 overflow-y-auto"></ul>
+    <div class="mt-4 flex justify-center gap-3">
+      <a id="downloadLink"
+         class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+         download="backup_codes.txt">Pobierz jako .txt</a>
+      <button onclick="closeModal()"
+              class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-100">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function generateCodes() {
+  fetch("{% url 'generate_backup_codes_ajax' %}", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      const list = document.getElementById("codesList");
+      list.innerHTML = "";
+      let txt = "";
+
+      data.codes.forEach(code => {
+        const li = document.createElement("li");
+        li.textContent = code;
+        list.appendChild(li);
+        txt += code + "\n";
+      });
+
+      const blob = new Blob([txt], {type: "text/plain"});
+      const url = URL.createObjectURL(blob);
+      const downloadLink = document.getElementById("downloadLink");
+      downloadLink.href = url;
+
+      document.getElementById("errorMsg").classList.add("hidden");
+      openModal();
+    } else {
+      const err = document.getElementById("errorMsg");
+      err.textContent = data.error || "Wystąpił błąd.";
+      err.classList.remove("hidden");
+    }
+  })
+  .catch(() => {
+    const err = document.getElementById("errorMsg");
+    err.textContent = "Błąd połączenia z serwerem.";
+    err.classList.remove("hidden");
+  });
+}
+
+function openModal() {
+  document.getElementById('codesModal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('codesModal').classList.add('hidden');
+  // Zwolnij pamięć z blobów
+  const downloadLink = document.getElementById("downloadLink");
+  if (downloadLink.href.startsWith("blob:")) {
+    URL.revokeObjectURL(downloadLink.href);
+  }
+}
+</script>
+
+</body>
+</html>

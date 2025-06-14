@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 import uuid
+import hashlib
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, login, password=None, **extra_fields):
@@ -122,3 +123,12 @@ class BlockedIP(models.Model):
 
     def __str__(self):
         return f"{self.ip_address} blocked until {self.blocked_until}"
+
+class BackupCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    code_hash = models.CharField(max_length=128)
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def check_code(self, code: str) -> bool:
+        return not self.used and self.code_hash == hashlib.sha256(code.encode()).hexdigest()

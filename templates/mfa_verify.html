@@ -37,7 +37,74 @@
         <p class="text-red-600 text-sm text-center mt-2">{{ error }}</p>
       {% endif %}
     </form>
+  <!-- Przycisk awaryjny -->
+<div class="text-center mt-4">
+  <button type="button" onclick="openModal()"
+          class="text-sm text-blue-600 hover:underline">
+    Nie mam dostępu do aplikacji
+  </button>
+</div>
+
+<!-- Modal -->
+<div id="backupModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
+    <h2 class="text-xl font-bold mb-4 text-center text-gray-800">Kod awaryjny</h2>
+    <p class="text-sm text-gray-600 mb-3">Możesz użyć jednego z wcześniej wygenerowanych kodów. Zostanie on dezaktywowany po użyciu.</p>
+    <p class="text-xs text-red-600 mb-4">Zalecamy ponowną konfigurację MFA po zalogowaniu.</p>
+
+    <input type="text" id="backup_code_input" placeholder="Wpisz kod awaryjny"
+           class="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-500">
+
+    <div id="backup_error" class="text-sm text-red-600 mb-2 hidden"></div>
+
+    <div class="flex justify-between">
+      <button onclick="submitBackupCode()"
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Użyj kodu</button>
+      <button onclick="closeModal()"
+              class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-100">Anuluj</button>
+    </div>
+  </div>
+</div>
   </div>
 
 </body>
 </html>
+
+<script>
+function openModal() {
+  document.getElementById('backupModal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('backupModal').classList.add('hidden');
+  document.getElementById('backup_code_input').value = '';
+  document.getElementById('backup_error').classList.add('hidden');
+}
+
+function submitBackupCode() {
+  const code = document.getElementById('backup_code_input').value;
+  fetch("{% url 'verify_backup_code' %}", {
+    method: "POST",
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ code })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      window.location.href = data.redirect_url;
+    } else {
+      const error = document.getElementById('backup_error');
+      error.textContent = data.error;
+      error.classList.remove('hidden');
+    }
+  })
+  .catch(() => {
+    const error = document.getElementById('backup_error');
+    error.textContent = "Wystąpił błąd. Spróbuj ponownie.";
+    error.classList.remove('hidden');
+  });
+}
+</script>
