@@ -47,15 +47,12 @@ def should_skip_mfa_for_device(request, user):
     if not trusted_device:
         return False
 
-    # Możesz dodać dodatkowe warunki np. UA ≈ OK, lokalizacja ≈ OK
-    # Prosty przykład — akceptujemy jeśli kraj się nie zmienił
     trusted_location_country = trusted_device.first_seen_location.split(",")[-1].strip()
     current_location_country = location.split(",")[-1].strip()
 
     if trusted_location_country != current_location_country:
         return False  # kraj się zmienił → wymuś MFA
 
-    # Możesz dodać też prostą kontrolę User-Agent (tu bardzo prosto)
     if trusted_device.user_agent != user_agent:
         return False
 

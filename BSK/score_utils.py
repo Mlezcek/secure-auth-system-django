@@ -35,7 +35,7 @@ def calculate_security_score(user):
             'text': 'Hasło nie było zmieniane przez ponad 90 dni.'
         })
 
-    # Ostatnia nieudana próba logowania z innego IP (np. innego kraju – uproszczenie)
+    # Ostatnia nieudana próba logowania z innego IP
     recent_failed = user.loginattempt_set.filter(success=False).order_by('-timestamp')[:3]
     if recent_failed:
         suspicious = any(a.ip_address not in [

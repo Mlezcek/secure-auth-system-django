@@ -49,7 +49,7 @@ class LoginView(View):
         RATE_LIMIT_IP_PERIOD_MINUTES = getattr(settings, 'RATE_LIMIT_IP_PERIOD_MINUTES', 1)
         BLOCK_IP_DURATION_MINUTES = getattr(settings, 'BLOCK_IP_DURATION_MINUTES', 15)
 
-        # 1️⃣ Sprawdź czy IP jest zablokowane
+        # Sprawdź czy IP jest zablokowane
         blocked_ip = BlockedIP.objects.filter(ip_address=ip).first()
         if blocked_ip and blocked_ip.is_blocked():
             return HttpResponse(
@@ -60,7 +60,7 @@ class LoginView(View):
             # Auto-usuwanie przeterminowanych blokad IP
             blocked_ip.delete()
 
-        # 2️⃣ Sprawdź ile było prób z IP w ostatnim okresie
+        # Sprawdź ile było prób z IP w ostatnim okresie
         recent_attempts_count = LoginAttempt.objects.filter(
             ip_address=ip,
             timestamp__gte=now() - timedelta(minutes=RATE_LIMIT_IP_PERIOD_MINUTES)
@@ -77,7 +77,7 @@ class LoginView(View):
                 status=429
             )
 
-        # 3️⃣ Sprawdź użytkownika
+        # Sprawdź użytkownika
         user = User.objects.filter(login=login_input).first()
 
         if user:
@@ -95,10 +95,10 @@ class LoginView(View):
                     status=423  # 423 Locked – RFC 4918
                 )
 
-        # 4️⃣ Próba uwierzytelnienia
+        # Próba uwierzytelnienia
         auth_user = authenticate(request, username=login_input, password=password)
 
-        # 5️⃣ Zapisz próbę logowania
+        # Zapisz próbę logowania
         LoginAttempt.objects.create(
             user=user if user else None,
             username_entered=login_input,
@@ -112,7 +112,7 @@ class LoginView(View):
             # Reset failed attempts jeśli sukces
             check_and_handle_blocking(auth_user, success=True)
 
-            # 6️⃣ Sprawdzenie MFA
+            # Sprawdzenie MFA
             from .trusted_device_utils import should_skip_mfa_for_device
 
             if auth_user.mfa_enabled:
@@ -134,7 +134,7 @@ class LoginView(View):
                     request.session['pre_mfa_user_id'] = auth_user.id
                     return redirect('mfa_verify')
 
-            # 7️⃣ Normalny login (bez MFA)
+            # Normalny login (bez MFA)
             login(request, auth_user)
 
             # Logowanie eventu
@@ -149,7 +149,7 @@ class LoginView(View):
 
             return redirect('dashboard')
 
-        # 8️⃣ Nieudane logowanie
+        # Nieudane logowanie
         return render(request, 'login.html', {
             'error': 'Niepoprawne dane logowania.'
         })
@@ -472,7 +472,7 @@ def admin_user_action_view(request):
     except User.DoesNotExist:
         return redirect('admin_dashboard')  # fallback
 
-    # Proste akcje:
+    #Akcje:
     if action == "unblock":
         target.is_blocked = False
         target.blocked_until = None
@@ -490,7 +490,7 @@ def admin_user_action_view(request):
         target.failed_attempts = 0
         target.save()
     elif action == "force_password":
-        target.must_change_password = True  # upewnij się, że masz to pole
+        target.must_change_password = True
         target.save()
 
     log_admin_action(

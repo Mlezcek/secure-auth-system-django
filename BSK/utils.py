@@ -111,7 +111,7 @@ def process_password_reset(
 
     user = reset_token.user
     user.set_password(new_password)
-    user.must_change_password = False  # jeśli stosujesz ten mechanizm
+    user.must_change_password = False
     user.save()
 
     reset_token.is_used = True

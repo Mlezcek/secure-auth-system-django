@@ -106,7 +106,7 @@ class PasswordResetEvent(models.Model):
 
 class TrustedDevice(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    device_id = models.CharField(max_length=64, unique=True)  # np. losowy UUID zapisany w ciasteczku
+    device_id = models.CharField(max_length=64, unique=True)
     device_name = models.CharField(max_length=255)
     user_agent = models.TextField()
     first_seen_ip = models.GenericIPAddressField()
