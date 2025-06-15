@@ -1,0 +1,7 @@
+Django>=5.2,<6.0
+requests
+pyotp
+qrcode
+Pillow
+user-agents
+geoip2
