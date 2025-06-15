@@ -5,7 +5,7 @@ from .views import LoginView, dashboard_view, PasswordResetRequestView, Password
     BlockedIPsAdminView, logout_view, toggle_mfa, remove_trusted_device, verify_backup_code_view, backup_codes_view, \
     download_backup_codes, generate_backup_codes_ajax, admin_audit_log_view, admin_dashboard_view, \
     admin_user_action_view, admin_block_ip_view, admin_unblock_ip_view, ajax_search_users, ajax_search_ips, \
-    ajax_search_logs
+    ajax_search_logs, test_geoip
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
@@ -34,4 +34,6 @@ path('admin/unblock_ip/', admin_unblock_ip_view, name='admin_unblock_ip'),
 path('admin/ajax/search_users/', ajax_search_users, name='ajax_search_users'),
 path('admin/ajax/search_ips/', ajax_search_ips, name='ajax_search_ips'),
 path('admin/ajax/search_logs/', ajax_search_logs, name='ajax_search_logs'),
+
+path('test_geoip/', test_geoip),
 ]

@@ -91,3 +91,5 @@ def register_trusted_device(response, request, user):
         secure=True,
         samesite='Lax'
     )
+
+

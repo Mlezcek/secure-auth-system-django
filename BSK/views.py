@@ -604,3 +604,16 @@ def ajax_search_logs(request):
 
     events = sorted(events, key=lambda e: e["timestamp"], reverse=True)
     return JsonResponse(events, safe=False)
+
+from django.http import JsonResponse
+from django.contrib.gis.geoip2 import GeoIP2
+
+def test_geoip(request):
+    ip = request.GET.get('ip', '8.8.8.8')
+    g = GeoIP2()
+    try:
+        location = g.city(ip)
+    except Exception as e:
+        return JsonResponse({'error': str(e)})
+
+    return JsonResponse(location)
