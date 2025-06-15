@@ -4,9 +4,10 @@ from datetime import timedelta, datetime
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Q
 from django.http import HttpResponse, Http404, JsonResponse
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
 
 from .mail import send_new_login_email, send_password_reset_email
@@ -20,8 +21,8 @@ from django.utils.timezone import now, localtime
 from django.views import View
 
 from .models import LoginAttempt, LoginEvent, ResetPasswordToken, PasswordResetTokenEvent, BlockedIP, TrustedDevice, \
-    BackupCode
-from .utils import verify_recaptcha
+    BackupCode, AdminAuditLog
+from .utils import verify_recaptcha, log_admin_action
 from .utils import check_and_handle_blocking, process_password_reset
 
 from django.conf import settings
@@ -257,6 +258,15 @@ class BlockedUsersAdminView(View):
                 user.blocked_until = None
                 user.failed_attempts = 0
                 user.save()
+
+                log_admin_action(
+                    admin=request.user,
+                    action="Odblokowanie użytkownika",
+                    request=request,
+                    target_user=user,
+                    details="Ręczne odblokowanie z panelu administratora"
+                )
+
                 message = 'Użytkownik odblokowany.'
             except User.DoesNotExist:
                 message = 'Użytkownik nie istnieje.'
@@ -416,3 +426,181 @@ def generate_backup_codes_ajax(request):
     codes = generate_backup_codes(user)
 
     return JsonResponse({'success': True, 'codes': codes})
+
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+@login_required
+def admin_audit_log_view(request):
+    logs = AdminAuditLog.objects.select_related('admin', 'target_user').order_by('-timestamp')[:100]
+    return render(request, 'admin_audit_logs.html', {'logs': logs})
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def admin_dashboard_view(request):
+    users_data = []
+    for u in User.objects.all():
+        score, _ = calculate_security_score(u)
+        last_login = u.loginevent_set.order_by('-timestamp').first()
+        users_data.append({
+            'id': u.id,
+            'login': u.login,
+            'email': u.email,
+            'is_blocked': u.is_blocked,
+            'score': score,
+            'last_login': last_login.timestamp if last_login else None,
+        })
+
+    blocked_ips = BlockedIP.objects.filter(blocked_until__gt=now())
+    return render(request, 'admin_dashboard.html', {
+        'users': users_data,
+        'blocked_ips': blocked_ips,
+    })
+
+@require_POST
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+@csrf_protect
+def admin_user_action_view(request):
+    from .models import User
+    from django.utils.timezone import now, timedelta
+
+    user_id = request.POST.get("user_id")
+    action = request.POST.get("action")
+    admin = request.user
+
+    try:
+        target = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('admin_dashboard')  # fallback
+
+    # Proste akcje:
+    if action == "unblock":
+        target.is_blocked = False
+        target.blocked_until = None
+        target.failed_attempts = 0
+        target.save()
+    elif action == "block":
+        target.is_blocked = True
+        target.blocked_until = now() + timedelta(minutes=15)
+        target.save()
+    elif action == "reset_mfa":
+        target.mfa_enabled = False
+        target.mfa_secret = None
+        target.save()
+    elif action == "reset_attempts":
+        target.failed_attempts = 0
+        target.save()
+    elif action == "force_password":
+        target.must_change_password = True  # upewnij się, że masz to pole
+        target.save()
+
+    log_admin_action(
+        admin=admin,
+        action=f"{action} dla użytkownika",
+        request=request,
+        target_user=target,
+        details="Akcja z widoku admin_user_action_view"
+    )
+
+    return redirect('admin_dashboard')
+
+@require_POST
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def admin_block_ip_view(request):
+    ip = request.POST.get("ip_address")
+    duration_minutes = int(request.POST.get("duration", 15))
+    until = now() + timedelta(minutes=duration_minutes)
+
+    if ip:
+        BlockedIP.objects.update_or_create(
+            ip_address=ip,
+            defaults={"blocked_until": until}
+        )
+
+    log_admin_action(
+        admin=request.user,
+        action="Zablokowanie IP",
+        request=request,
+        details=f"IP: {ip}, czas trwania: {duration_minutes} min"
+    )
+
+    return redirect('admin_dashboard')
+
+
+@require_POST
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def admin_unblock_ip_view(request):
+    ip = request.POST.get("ip_address")
+    BlockedIP.objects.filter(ip_address=ip).delete()
+
+    log_admin_action(
+        admin=request.user,
+        action="Odblokowanie IP",
+        request=request,
+        details=f"IP: {ip}, odblokowane"
+    )
+
+    return redirect('admin_dashboard')
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def ajax_search_users(request):
+    query = request.GET.get("q", "")
+    users = User.objects.filter(
+        Q(login__icontains=query) | Q(email__icontains=query)
+    ).values("id", "login", "email", "is_blocked")
+    return JsonResponse(list(users), safe=False)
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def ajax_search_ips(request):
+    query = request.GET.get("q", "")
+    ips = BlockedIP.objects.filter(ip_address__icontains=query, blocked_until__gt=now()) \
+        .values("ip_address", "blocked_until")
+    return JsonResponse(list(ips), safe=False)
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def ajax_search_logs(request):
+    from .models import LoginAttempt, PasswordResetEvent, PasswordResetTokenEvent
+    query = request.GET.get("q", "").lower()
+
+    events = []
+
+    # LoginAttempt
+    for l in LoginAttempt.objects.all():
+        if query in l.username_entered.lower() or query in l.ip_address or query in str(l.timestamp):
+            events.append({
+                "type": "LoginAttempt",
+                "user": l.username_entered,
+                "status": "✅" if l.success else "❌",
+                "ip": l.ip_address,
+                "timestamp": l.timestamp.strftime("%Y-%m-%d %H:%M"),
+            })
+
+    # PasswordResetEvent
+    for r in PasswordResetEvent.objects.all():
+        if query in r.user.login.lower() or query in r.ip_address or query in str(r.timestamp):
+            events.append({
+                "type": "PasswordReset",
+                "user": r.user.login,
+                "status": "🔒",
+                "ip": r.ip_address,
+                "timestamp": r.timestamp.strftime("%Y-%m-%d %H:%M"),
+            })
+
+    # TokenEvents
+    for t in PasswordResetTokenEvent.objects.all():
+        if query in t.user.login.lower() or query in t.ip_address or query in str(t.timestamp):
+            events.append({
+                "type": "ResetTokenRequested",
+                "user": t.user.login,
+                "status": "📩",
+                "ip": t.ip_address,
+                "timestamp": t.timestamp.strftime("%Y-%m-%d %H:%M"),
+            })
+
+    events = sorted(events, key=lambda e: e["timestamp"], reverse=True)
+    return JsonResponse(events, safe=False)

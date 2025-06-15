@@ -3,7 +3,9 @@ from django.urls import path
 from .mfa import MFAVerifyView, MFASetupView
 from .views import LoginView, dashboard_view, PasswordResetRequestView, PasswordResetConfirmView, BlockedUsersAdminView, \
     BlockedIPsAdminView, logout_view, toggle_mfa, remove_trusted_device, verify_backup_code_view, backup_codes_view, \
-    download_backup_codes, generate_backup_codes_ajax
+    download_backup_codes, generate_backup_codes_ajax, admin_audit_log_view, admin_dashboard_view, \
+    admin_user_action_view, admin_block_ip_view, admin_unblock_ip_view, ajax_search_users, ajax_search_ips, \
+    ajax_search_logs
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
@@ -23,7 +25,13 @@ path('mfa/verify_backup_code/', verify_backup_code_view, name='verify_backup_cod
 
 path('dashboard/backup_codes/', backup_codes_view, name='backup_codes'),
 path('dashboard/backup_codes/generate/', generate_backup_codes_ajax, name='generate_backup_codes_ajax'),
+path('admin/audit_logs/', admin_audit_log_view, name='admin_audit_logs'),
+path('admin/panel/', admin_dashboard_view, name='admin_dashboard'),
+path('admin/user_action/', admin_user_action_view, name='admin_user_action'),
 
-
-
+path('admin/block_ip/', admin_block_ip_view, name='admin_block_ip'),
+path('admin/unblock_ip/', admin_unblock_ip_view, name='admin_unblock_ip'),
+path('admin/ajax/search_users/', ajax_search_users, name='ajax_search_users'),
+path('admin/ajax/search_ips/', ajax_search_ips, name='ajax_search_ips'),
+path('admin/ajax/search_logs/', ajax_search_logs, name='ajax_search_logs'),
 ]

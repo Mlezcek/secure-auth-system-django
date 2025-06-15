@@ -13,6 +13,7 @@ from BSK import settings
 from .mail import send_account_blocked_email
 
 from .hibp_utils import is_password_pwned
+from .models import AdminAuditLog
 
 MAX_FAILED_ATTEMPTS = 5
 BLOCK_DURATION_MINUTES = 15
@@ -122,3 +123,19 @@ def process_password_reset(
         user_agent=user_agent,
     )
     return True, None
+
+def log_admin_action(admin, action: str, request=None, target_user=None, details=""):
+    ip_address = get_client_ip(request) if request else "0.0.0.0"
+    AdminAuditLog.objects.create(
+        admin=admin,
+        action=action,
+        target_user=target_user,
+        ip_address=ip_address,
+        details=details
+    )
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0]
+    return request.META.get('REMOTE_ADDR')

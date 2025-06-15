@@ -32,6 +32,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     mfa_enabled = models.BooleanField(default=False)
     mfa_secret = models.CharField(max_length=32, blank=True, null=True)
 
+    must_change_password = models.BooleanField(default=False)
+
     USERNAME_FIELD = 'login'
     REQUIRED_FIELDS = ['email']
 
@@ -132,3 +134,14 @@ class BackupCode(models.Model):
 
     def check_code(self, code: str) -> bool:
         return not self.used and self.code_hash == hashlib.sha256(code.encode()).hexdigest()
+
+class AdminAuditLog(models.Model):
+    admin = models.ForeignKey(User, on_delete=models.CASCADE)
+    action = models.CharField(max_length=255)
+    target_user = models.ForeignKey(User, related_name="admin_actions", null=True, on_delete=models.SET_NULL)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField()
+    details = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.timestamp} – {self.admin.login}: {self.action}"

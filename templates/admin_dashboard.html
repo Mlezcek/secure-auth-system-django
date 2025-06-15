@@ -1,0 +1,266 @@
+<!-- templates/admin_dashboard.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel administratora</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-semibold text-blue-600">🛡️ Panel administratora</h1>
+    <a href="{% url 'dashboard' %}" class="text-blue-600 hover:underline">↩ Powrót do dashboardu</a>
+  </nav>
+
+  <main class="p-6 space-y-6">
+
+    <!-- Użytkownicy -->
+    <section>
+      <h2 class="text-xl font-semibold mb-4">📋 Zarządzanie użytkownikami</h2>
+
+      <div class="overflow-x-auto bg-white shadow rounded-xl">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Login</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Scoring</th>
+                <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Ost. logowanie</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akcje</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% for user in users %}
+            <tr>
+              <td class="px-6 py-4 text-sm text-gray-900 font-mono">{{ user.login }}</td>
+              <td class="px-6 py-4 text-sm text-gray-600">{{ user.email }}</td>
+              <td class="px-6 py-4 text-sm">
+                {% if user.is_blocked %}
+                  <span class="text-red-600 font-semibold">Zablokowany</span>
+                {% else %}
+                  <span class="text-green-600">Aktywny</span>
+                {% endif %}
+                <td class="px-6 py-4 text-sm text-blue-600 font-bold">{{ user.score }}%</td>
+<td class="px-6 py-4 text-sm text-gray-500">
+  {% if user.last_login %}{{ user.last_login|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+</td>
+              </td>
+
+              <td class="px-6 py-4 text-sm space-x-2">
+                <form method="post" action="{% url 'admin_user_action' %}" class="inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="user_id" value="{{ user.id }}">
+                  <select name="action" class="border rounded px-2 py-1 text-sm">
+                    <option value="">– wybierz –</option>
+                    <option value="unblock">Odblokuj</option>
+                    <option value="block">Zablokuj (15min)</option>
+                    <option value="reset_mfa">Resetuj MFA</option>
+                    <option value="reset_attempts">Wyzeruj próby</option>
+                    <option value="force_password">Wymuś zmianę hasła</option>
+                  </select>
+                  <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 btn-hover text-sm">OK</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        <div class="mb-3">
+  <input type="text" id="user-search" placeholder="Szukaj po loginie lub e-mailu..."
+         class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+</div>
+        </table>
+      </div>
+    </section>
+
+   <!-- ZABLOKOWANE IP -->
+<section>
+  <h2 class="text-xl font-semibold mb-4">🌐 Zablokowane adresy IP</h2>
+
+  <!-- Lista IP -->
+  <div class="overflow-x-auto bg-white shadow rounded-xl mb-6">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Adres IP</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zablokowane do</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akcja</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        {% for ip in blocked_ips %}
+        <tr>
+          <td class="px-6 py-4 text-sm font-mono text-gray-900">{{ ip.ip_address }}</td>
+          <td class="px-6 py-4 text-sm text-gray-600">{{ ip.blocked_until|date:"Y-m-d H:i" }}</td>
+          <td class="px-6 py-4 text-sm">
+            <form method="post" action="{% url 'admin_unblock_ip' %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="ip_address" value="{{ ip.ip_address }}">
+              <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 btn-hover text-sm">Odblokuj</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Brak zablokowanych IP.</td></tr>
+        {% endfor %}
+      </tbody>
+    <div class="mb-3">
+  <input type="text" id="ip-search" placeholder="Szukaj IP..."
+         class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+</div>
+
+    </table>
+  </div>
+
+  <!-- Dodanie nowego IP -->
+  <form method="post" action="{% url 'admin_block_ip' %}" class="bg-white p-4 rounded-xl shadow-md space-y-4">
+    {% csrf_token %}
+    <h3 class="text-lg font-semibold">➕ Dodaj ręcznie IP do blokady</h3>
+
+    <div class="flex flex-col md:flex-row md:space-x-4">
+      <input type="text" name="ip_address" placeholder="np. 192.168.1.1"
+             class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+             required pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$">
+      <select name="duration" class="w-48 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+        <option value="15">15 minut</option>
+        <option value="60">1 godzina</option>
+        <option value="1440">1 dzień</option>
+        <option value="10080">7 dni</option>
+      </select>
+    </div>
+
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 btn-hover">Zablokuj IP</button>
+  </form>
+</section>
+    <!-- LOGI SYSTEMOWE -->
+<section>
+  <h2 class="text-xl font-semibold mb-4">📊 Logi systemowe</h2>
+
+  <input type="text" id="log-search" placeholder="Szukaj po loginie, IP, dacie..."
+         class="w-full mb-4 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+
+  <div class="bg-white shadow rounded-xl overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-2 text-xs font-medium text-gray-500 uppercase">Typ</th>
+          <th class="px-4 py-2 text-xs font-medium text-gray-500 uppercase">Użytkownik</th>
+          <th class="px-4 py-2 text-xs font-medium text-gray-500 uppercase">IP</th>
+          <th class="px-4 py-2 text-xs font-medium text-gray-500 uppercase">Data</th>
+          <th class="px-4 py-2 text-xs font-medium text-gray-500 uppercase">Status</th>
+        </tr>
+      </thead>
+      <tbody id="logs-body" class="bg-white divide-y divide-gray-200">
+        <tr><td colspan="5" class="px-4 py-3 text-gray-400">Wpisz coś, aby rozpocząć filtrowanie...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+  </main>
+
+</body>
+</html>
+
+<script>
+  // USER SEARCH
+  document.getElementById("user-search").addEventListener("input", async function () {
+    const query = this.value.trim();
+    const res = await fetch(`/admin/ajax/search_users/?q=` + encodeURIComponent(query));
+    const data = await res.json();
+
+    const tbody = document.querySelector("table tbody");
+    tbody.innerHTML = "";
+
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-sm text-gray-500">Brak wyników.</td></tr>`;
+      return;
+    }
+
+    data.forEach(user => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="px-6 py-4 text-sm font-mono">${user.login}</td>
+        <td class="px-6 py-4 text-sm text-gray-600">${user.email}</td>
+        <td class="px-6 py-4 text-sm">
+          ${user.is_blocked ? '<span class="text-red-600 font-semibold">Zablokowany</span>' : '<span class="text-green-600">Aktywny</span>'}
+        </td>
+        <td class="px-6 py-4 text-sm space-x-2">
+          <form method="post" action="/admin/user_action/" class="inline">
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+            <input type="hidden" name="user_id" value="${user.id}">
+            <select name="action" class="border rounded px-2 py-1 text-sm">
+              <option value="">– wybierz –</option>
+              <option value="unblock">Odblokuj</option>
+              <option value="block">Zablokuj (15min)</option>
+              <option value="reset_mfa">Resetuj MFA</option>
+              <option value="reset_attempts">Wyzeruj próby</option>
+              <option value="force_password">Wymuś zmianę hasła</option>
+            </select>
+            <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">OK</button>
+          </form>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+
+  // IP SEARCH
+  document.getElementById("ip-search").addEventListener("input", async function () {
+    const query = this.value.trim();
+    const res = await fetch(`/admin/ajax/search_ips/?q=` + encodeURIComponent(query));
+    const data = await res.json();
+
+    const tbody = document.querySelectorAll("table tbody")[1]; // drugi <tbody> = IP
+    tbody.innerHTML = "";
+
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-sm text-gray-500">Brak wyników.</td></tr>`;
+      return;
+    }
+
+    data.forEach(ip => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="px-6 py-4 text-sm font-mono">${ip.ip_address}</td>
+        <td class="px-6 py-4 text-sm text-gray-600">${ip.blocked_until}</td>
+        <td class="px-6 py-4 text-sm">
+          <form method="post" action="/admin/unblock_ip/" class="inline">
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+            <input type="hidden" name="ip_address" value="${ip.ip_address}">
+            <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm">Odblokuj</button>
+          </form>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+  
+  document.getElementById("log-search").addEventListener("input", async function () {
+  const q = this.value.trim();
+  const res = await fetch(`/admin/ajax/search_logs/?q=` + encodeURIComponent(q));
+  const logs = await res.json();
+  const body = document.getElementById("logs-body");
+  body.innerHTML = "";
+
+  if (logs.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="px-4 py-2 text-sm text-gray-500">Brak wyników.</td></tr>`;
+    return;
+  }
+
+  logs.forEach(log => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td class="px-4 py-2 text-sm">${log.type}</td>
+      <td class="px-4 py-2 text-sm font-mono">${log.user}</td>
+      <td class="px-4 py-2 text-sm text-gray-600">${log.ip}</td>
+      <td class="px-4 py-2 text-sm text-gray-500">${log.timestamp}</td>
+      <td class="px-4 py-2 text-sm">${log.status}</td>
+    `;
+    body.appendChild(row);
+  });
+});
+
+</script>
