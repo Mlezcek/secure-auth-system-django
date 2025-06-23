@@ -21,9 +21,10 @@ class AuthTokenMiddleware(MiddlewareMixin):
                 device_id=device_id,
                 is_active=True
             ).first()
-            if not device or device.auth_token != cookie_token:
-                logout(request)
-            return
+            if device and device.auth_token == cookie_token:
+                # Poprawny token dla zaufanego urządzenia
+                return
+
 
         # Jeśli niezaufane urządzenie
         if not cookie_token or not session_token or cookie_token != session_token:

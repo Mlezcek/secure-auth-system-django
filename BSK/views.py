@@ -869,7 +869,7 @@ def webauthn_login_options(request):
 
     # 🔒 Zamiana bytes na base64 przed zapisem do sesji
     challenge_b64 = base64.b64encode(options.challenge).decode('utf-8')
-    request.session['webauthn_challenge'] = challenge_b64
+    request.session['webauthn_challenge'] = base64.b64encode(options.challenge).decode()
     request.session['webauthn_login_user'] = user.id
 
     from webauthn.helpers import options_to_json
