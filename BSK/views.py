@@ -24,7 +24,7 @@ from django.views import View
 
 from .models import LoginAttempt, LoginEvent, ResetPasswordToken, PasswordResetTokenEvent, BlockedIP, TrustedDevice, \
     BackupCode, AdminAuditLog
-from .utils import verify_recaptcha, log_admin_action, kill_other_sessions, is_strong_password
+from .utils import verify_recaptcha, log_admin_action, kill_other_sessions, is_strong_password, verify_faceid_token
 from .utils import check_and_handle_blocking, process_password_reset
 
 from django.conf import settings
@@ -711,4 +711,75 @@ class RegisterView(View):
 
         user = User.objects.create_user(login=login_input, email=email, password=password)
         login(request, user)
+        return redirect('dashboard')
+
+class FaceIDLoginView(View):
+    def get(self, request):
+        return render(request, 'faceid_login.html')
+
+    def post(self, request):
+        token = request.POST.get('token')
+        ip = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+
+        user = verify_faceid_token(token)
+
+        LoginAttempt.objects.create(
+            user=user if user else None,
+            username_entered=user.login if user else 'FACEID',
+            ip_address=ip,
+            user_agent=user_agent,
+            success=bool(user),
+            mfa_used=False,
+        )
+
+        if user:
+            login(request, user)
+            kill_other_sessions(user, request.session.session_key)
+            auth_token = generate_auth_token(str(uuid.uuid4()))
+            request.session['auth_token'] = auth_token
+
+            response = redirect('dashboard')
+            response.set_cookie(
+                'auth_token',
+                auth_token,
+                max_age=60 * 15,
+                httponly=True,
+                secure=True,
+                samesite='Lax'
+            )
+
+            new_ip = not LoginEvent.objects.filter(user=user, ip_address=ip).exists()
+            LoginEvent.objects.create(
+                user=user,
+                ip_address=ip,
+                user_agent=user_agent,
+                location_info=get_location_from_ip(ip),
+            )
+            if new_ip and user.email:
+                send_new_login_email(user, ip)
+
+            return response
+
+        return render(request, 'faceid_login.html', {
+            'error': 'FaceID authentication failed.'
+        })
+
+class FaceIDSetupView(View):
+    """Allow a logged in user to assign or update their FaceID token."""
+
+    @method_decorator(login_required)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def get(self, request):
+        return render(request, 'faceid_setup.html', {
+            'current_token': request.user.faceid_token
+        })
+
+    def post(self, request):
+        token = request.POST.get('token', '').strip()
+        user = request.user
+        user.faceid_token = token or None
+        user.save()
         return redirect('dashboard')

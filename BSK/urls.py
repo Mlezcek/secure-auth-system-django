@@ -40,6 +40,5 @@ path('admin/ajax/search_logs/', ajax_search_logs, name='ajax_search_logs'),
 
 path('test_geoip/', test_geoip),
 
-    path('faceid_login/', FaceIDLoginView.as_view(), name='faceid_login'),
-    path('faceid/setup/', FaceIDSetupView.as_view(), name='faceid_setup'),
+
 ]
