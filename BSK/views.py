@@ -359,8 +359,7 @@ def toggle_mfa(request):
         enable = request.POST.get("enable") == "true"
         user.mfa_enabled = enable
         user.save()
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'mfa_enabled': user.mfa_enabled})
+
     return redirect('dashboard')
 
 @login_required
