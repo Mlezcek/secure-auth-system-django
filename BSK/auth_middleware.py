@@ -1,0 +1,27 @@
+from django.contrib.auth import logout
+from django.utils.deprecation import MiddlewareMixin
+from .models import TrustedDevice
+
+class AuthTokenMiddleware(MiddlewareMixin):
+    def process_request(self, request):
+        if not request.user.is_authenticated:
+            return
+
+        cookie_token = request.COOKIES.get('auth_token')
+        session_token = request.session.get('auth_token')
+
+        # Jeśli token zapisany w TrustedDevice
+        device_id = request.COOKIES.get('trusted_device_id')
+        if device_id:
+            device = TrustedDevice.objects.filter(
+                user=request.user,
+                device_id=device_id,
+                is_active=True
+            ).first()
+            if not device or device.auth_token != cookie_token:
+                logout(request)
+            return
+
+        # Jeśli niezaufane urządzenie
+        if not cookie_token or not session_token or cookie_token != session_token:
+            logout(request)

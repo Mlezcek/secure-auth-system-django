@@ -1,10 +1,15 @@
+import hashlib
+import hmac
 import uuid
+
+from . import settings
 from .models import TrustedDevice
 from django.utils.timezone import now
 from django.contrib.gis.geoip2 import GeoIP2
 import user_agents
 
-from .views import get_client_ip
+from .network_utils import get_client_ip
+
 
 TRUSTED_DEVICE_COOKIE_NAME = 'trusted_device_id'
 
@@ -63,23 +68,36 @@ def should_skip_mfa_for_device(request, user):
     return True
 
 # Dodaj nowe trusted device
-def register_trusted_device(response, request, user):
+def register_trusted_device(response, request, user, token_override=None):
+    import hmac
+    import hashlib
+    from django.conf import settings
+
     device_id = str(uuid.uuid4())
     user_agent = request.META.get('HTTP_USER_AGENT', '')
     ip = get_client_ip(request)
     location = get_location_from_ip(ip)
     device_name = get_device_name(user_agent)
 
+    # Jeśli token nie został podany — wygeneruj na podstawie device_id
+    if token_override is None:
+        secret = getattr(settings, 'AUTH_TOKEN_SECRET', 'dev_default_secret')
+        auth_token = hmac.new(secret.encode(), device_id.encode(), hashlib.sha256).hexdigest()
+    else:
+        auth_token = token_override
+
+    # Zapis do bazy
     TrustedDevice.objects.create(
         user=user,
         device_id=device_id,
         device_name=device_name,
         user_agent=user_agent,
         first_seen_ip=ip,
-        first_seen_location=location
+        first_seen_location=location,
+        auth_token=auth_token
     )
 
-    # Ustaw cookie
+    # Ciasteczka: device_id i auth_token
     response.set_cookie(
         TRUSTED_DEVICE_COOKIE_NAME,
         device_id,
@@ -88,5 +106,19 @@ def register_trusted_device(response, request, user):
         secure=True,
         samesite='Lax'
     )
+
+    response.set_cookie(
+        'auth_token',
+        auth_token,
+        max_age=60 * 60 * 24 * 30,
+        httponly=True,
+        secure=True,
+        samesite='Lax'
+    )
+
+
+def generate_auth_token(device_id: str):
+    secret = getattr(settings, 'AUTH_TOKEN_SECRET', 'hardcoded_dev_secret')
+    return hmac.new(secret.encode(), device_id.encode(), hashlib.sha256).hexdigest()
 
 

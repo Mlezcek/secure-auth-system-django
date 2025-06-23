@@ -18,9 +18,12 @@ def send_password_reset_email(user, reset_link):
     message = f"Kliknij w link aby zresetowa\u0107 has\u0142o: {reset_link}"
     notify_user_email(user, subject, message)
 
-def send_new_login_email(user, ip_address):
-    subject = "Nowe logowanie"
-    message = f"Zalogowano z nowego adresu IP: {ip_address}"
+def send_new_login_email(user, ip_address, location=None):
+    subject = "Nowe logowanie do konta"
+    message = f"Zalogowano na Twoje konto z IP: {ip_address}"
+    if location:
+        message += f" ({location})"
+    message += ".\nJeśli to nie Ty – zmień hasło i zgłoś incydent."
     notify_user_email(user, subject, message)
 
 def send_account_blocked_email(user, ip_address):

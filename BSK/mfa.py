@@ -1,3 +1,5 @@
+import uuid
+
 import pyotp
 import qrcode
 import qrcode.image.svg
@@ -11,7 +13,8 @@ from django.views import View
 from django.shortcuts import render, redirect
 
 from BSK.models import User
-from BSK.trusted_device_utils import register_trusted_device
+from BSK.trusted_device_utils import register_trusted_device, generate_auth_token
+from BSK.utils import kill_other_sessions
 
 
 class MFASetupView(View):
@@ -56,12 +59,25 @@ class MFAVerifyView(View):
             del request.session['pre_mfa_user_id']
             login(request, user)
 
+            kill_other_sessions(user, request.session.session_key)
+
             # Przygotowujemy redirect jako response
             response = redirect('dashboard')
 
-            # Sprawdzamy czy user zaznaczył "zaufaj temu urządzeniu":
+            auth_token = generate_auth_token(str(uuid.uuid4()))  # losowy
+            request.session["auth_token"] = auth_token
+
             if request.POST.get('remember_device'):
-                register_trusted_device(response, request, user)
+                register_trusted_device(response, request, user, token_override=auth_token)
+            else:
+                response.set_cookie(
+                    'auth_token',
+                    auth_token,
+                    max_age=60 * 15,  # krótki czas, np. 15 min
+                    httponly=True,
+                    secure=True,
+                    samesite='Lax'
+                )
 
             return response
         else:

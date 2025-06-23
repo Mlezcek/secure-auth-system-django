@@ -4,9 +4,12 @@ import json
 import urllib.request
 import urllib.parse
 import re
+
+from requests import Session
+
 from .models import (
     ResetPasswordToken,
-    PasswordResetEvent,
+    PasswordResetEvent, TrustedDevice,
 )
 
 from BSK import settings
@@ -114,6 +117,8 @@ def process_password_reset(
     user.must_change_password = False
     user.save()
 
+    TrustedDevice.objects.filter(user=user).update(auth_token=None)
+
     reset_token.is_used = True
     reset_token.save()
 
@@ -139,3 +144,13 @@ def get_client_ip(request):
     if x_forwarded_for:
         return x_forwarded_for.split(',')[0]
     return request.META.get('REMOTE_ADDR')
+
+def kill_other_sessions(user, current_session_key):
+    sessions = Session.objects.filter(expire_date__gte=now())
+    for session in sessions:
+        try:
+            data = session.get_decoded()
+            if data.get('_auth_user_id') == str(user.id) and session.session_key != current_session_key:
+                session.delete()
+        except Exception:
+            continue

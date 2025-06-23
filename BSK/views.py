@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 from .mail import send_new_login_email, send_password_reset_email
 from .score_utils import calculate_security_score
 from BSK.backup_codes_utils import generate_backup_codes
+from .trusted_device_utils import get_location_from_ip
 
 User = get_user_model()
 
@@ -121,11 +122,15 @@ class LoginView(View):
                     login(request, auth_user)
                     # Dodaj LoginEvent (jak normalnie)
                     new_ip = not LoginEvent.objects.filter(user=auth_user, ip_address=ip).exists()
+
                     LoginEvent.objects.create(
                         user=auth_user,
                         ip_address=ip,
                         user_agent=user_agent,
+                        location_info=get_location_from_ip(ip),
                     )
+                    new_location = get_location_from_ip(ip)
+
                     if new_ip and auth_user.email:
                         send_new_login_email(auth_user, ip)
 
@@ -143,6 +148,7 @@ class LoginView(View):
                 user=auth_user,
                 ip_address=ip,
                 user_agent=user_agent,
+                location_info = get_location_from_ip(ip),
             )
             if new_ip and auth_user.email:
                 send_new_login_email(auth_user, ip)
@@ -617,3 +623,13 @@ def test_geoip(request):
         return JsonResponse({'error': str(e)})
 
     return JsonResponse(location)
+
+@login_required
+def reset_mfa_view(request):
+    if request.method == "POST":
+        user = request.user
+        user.mfa_secret = None
+        user.mfa_enabled = False
+        user.save()
+        return redirect('mfa_setup')
+    return render(request, 'confirm_reset_mfa.html')

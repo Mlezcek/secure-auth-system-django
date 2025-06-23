@@ -115,6 +115,9 @@ class TrustedDevice(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     is_active = models.BooleanField(default=True)
 
+    auth_token = models.CharField(max_length=128, blank=True, null=True)
+
+
 class BlockedIP(models.Model):
     ip_address = models.GenericIPAddressField(unique=True)
     blocked_until = models.DateTimeField()
