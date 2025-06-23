@@ -1,3 +1,4 @@
+from django.contrib.sessions.models import Session
 from django.utils.timezone import now, timedelta
 import os
 import json
@@ -5,7 +6,7 @@ import urllib.request
 import urllib.parse
 import re
 
-from requests import Session
+import requests
 
 from .models import (
     ResetPasswordToken,

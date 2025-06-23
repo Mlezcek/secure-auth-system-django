@@ -53,11 +53,7 @@
         <input type="hidden" name="enable" value="true">
         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">Włącz MFA</button>
       {% endif %}
-       {% if request.user.mfa_secret %}
-        <a href="{% url 'reset_mfa' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition">Resetuj MFA</a>
-      {% else %}
-        <a href="{% url 'mfa_setup' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition">Konfiguruj MFA</a>
-      {% endif %}
+      <a href="{% url 'mfa_setup' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition">Konfiguruj MFA</a>
     </form>
   
     <a href="{% url 'backup_codes' %}" class="inline-block mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">

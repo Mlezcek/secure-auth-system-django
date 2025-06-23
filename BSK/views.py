@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 from .mail import send_new_login_email, send_password_reset_email
 from .score_utils import calculate_security_score
 from BSK.backup_codes_utils import generate_backup_codes
-from .trusted_device_utils import get_location_from_ip
+from .trusted_device_utils import get_location_from_ip, generate_auth_token
 
 User = get_user_model()
 
@@ -23,7 +23,7 @@ from django.views import View
 
 from .models import LoginAttempt, LoginEvent, ResetPasswordToken, PasswordResetTokenEvent, BlockedIP, TrustedDevice, \
     BackupCode, AdminAuditLog
-from .utils import verify_recaptcha, log_admin_action
+from .utils import verify_recaptcha, log_admin_action, kill_other_sessions
 from .utils import check_and_handle_blocking, process_password_reset
 
 from django.conf import settings
@@ -120,7 +120,22 @@ class LoginView(View):
                 if should_skip_mfa_for_device(request, auth_user):
                     # Pomin MFA — normalny login
                     login(request, auth_user)
-                    # Dodaj LoginEvent (jak normalnie)
+                    # Dodaj LoginEvent (
+
+
+                    kill_other_sessions(auth_user, request.session.session_key)
+
+                    response = redirect('dashboard')
+                    if request.COOKIES.get('auth_token'):
+                        response.set_cookie(
+                            'auth_token',
+                            request.COOKIES.get('auth_token'),
+                            max_age=60 * 60 * 24 * 30,
+                            httponly=True,
+                            secure=True,
+                            samesite='Lax'
+                        )
+
                     new_ip = not LoginEvent.objects.filter(user=auth_user, ip_address=ip).exists()
 
                     LoginEvent.objects.create(
@@ -141,6 +156,19 @@ class LoginView(View):
 
             # Normalny login (bez MFA)
             login(request, auth_user)
+            kill_other_sessions(auth_user, request.session.session_key)
+            auth_token = generate_auth_token(str(uuid.uuid4()))
+            request.session["auth_token"] = auth_token
+
+            response = redirect('dashboard')
+            response.set_cookie(
+                'auth_token',
+                auth_token,
+                max_age=60 * 15,
+                httponly=True,
+                secure=True,
+                samesite='Lax'
+            )
 
             # Logowanie eventu
             new_ip = not LoginEvent.objects.filter(user=auth_user, ip_address=ip).exists()
@@ -153,7 +181,7 @@ class LoginView(View):
             if new_ip and auth_user.email:
                 send_new_login_email(auth_user, ip)
 
-            return redirect('dashboard')
+            return response
 
         # Nieudane logowanie
         return render(request, 'login.html', {
@@ -331,6 +359,8 @@ def toggle_mfa(request):
         enable = request.POST.get("enable") == "true"
         user.mfa_enabled = enable
         user.save()
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'mfa_enabled': user.mfa_enabled})
     return redirect('dashboard')
 
 @login_required
