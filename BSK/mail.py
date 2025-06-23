@@ -33,3 +33,8 @@ def send_account_blocked_email(user, ip_address):
         f"nieudanych pr\u00f3bach logowania z IP {ip_address}"
     )
     notify_user_email(user, subject, message)
+
+def send_mfa_reset_email(user):
+    subject = "Reset MFA"
+    message = "Twoje uwierzytelnianie wielosk\u0142adnikowe zosta\u0142o zresetowane."
+    notify_user_email(user, subject, message)

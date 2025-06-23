@@ -34,6 +34,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     must_change_password = models.BooleanField(default=False)
 
+    last_mfa_reset = models.DateTimeField(null=True, blank=True)
+
     USERNAME_FIELD = 'login'
     REQUIRED_FIELDS = ['email']
 

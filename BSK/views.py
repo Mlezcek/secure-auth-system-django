@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
 
-from .mail import send_new_login_email, send_password_reset_email
+from .mail import send_new_login_email, send_password_reset_email, send_mfa_reset_email
 from .score_utils import calculate_security_score
 from BSK.backup_codes_utils import generate_backup_codes
 from .trusted_device_utils import get_location_from_ip, generate_auth_token
@@ -657,8 +657,18 @@ def test_geoip(request):
 def reset_mfa_view(request):
     if request.method == "POST":
         user = request.user
+        cooldown = getattr(settings, 'MFA_RESET_COOLDOWN_HOURS', 24)
+        if user.last_mfa_reset and user.last_mfa_reset > now() - timedelta(hours=cooldown):
+            return HttpResponse(
+                'Mo\u017cesz resetowa\u0107 MFA tylko raz na 24 godziny.',
+                status=429,
+            )
+
         user.mfa_secret = None
         user.mfa_enabled = False
+        user.last_mfa_reset = now()
         user.save()
+        if user.email:
+            send_mfa_reset_email(user)
         return redirect('mfa_setup')
     return render(request, 'confirm_reset_mfa.html')
