@@ -4,6 +4,9 @@ from .models import TrustedDevice
 
 class AuthTokenMiddleware(MiddlewareMixin):
     def process_request(self, request):
+        if 'auth_token' not in request.session:
+            return  # nie sprawdzaj, bo logowanie jeszcze trwa
+
         if not request.user.is_authenticated:
             return
 

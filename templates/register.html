@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Rejestracja</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center text-blue-600 mb-6">Rejestracja</h2>
+
+    {% if error %}
+      <p class="text-red-600 text-sm text-center mb-4">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+
+      <div>
+        <label for="login" class="block text-sm font-medium text-gray-700 mb-1">Login</label>
+        <input type="text" name="login" id="login" required
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div>
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Adres e-mail</label>
+        <input type="email" name="email" id="email" required
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Hasło</label>
+        <input type="password" name="password" id="password" required
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div>
+        <label for="password_confirm" class="block text-sm font-medium text-gray-700 mb-1">Potwierdź hasło</label>
+        <input type="password" name="password_confirm" id="password_confirm" required
+               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <button type="submit"
+              class="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md shadow hover:bg-blue-700 transition">
+        Zarejestruj się
+      </button>
+    </form>
+  </div>
+
+</body>
+</html>

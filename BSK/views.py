@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
 
+from .hibp_utils import is_password_pwned
 from .mail import send_new_login_email, send_password_reset_email, send_mfa_reset_email
 from .score_utils import calculate_security_score
 from BSK.backup_codes_utils import generate_backup_codes
@@ -23,7 +24,7 @@ from django.views import View
 
 from .models import LoginAttempt, LoginEvent, ResetPasswordToken, PasswordResetTokenEvent, BlockedIP, TrustedDevice, \
     BackupCode, AdminAuditLog
-from .utils import verify_recaptcha, log_admin_action, kill_other_sessions
+from .utils import verify_recaptcha, log_admin_action, kill_other_sessions, is_strong_password
 from .utils import check_and_handle_blocking, process_password_reset
 
 from django.conf import settings
@@ -672,3 +673,42 @@ def reset_mfa_view(request):
             send_mfa_reset_email(user)
         return redirect('mfa_setup')
     return render(request, 'confirm_reset_mfa.html')
+
+class RegisterView(View):
+    def get(self, request):
+        return render(request, 'register.html')
+
+    def post(self, request):
+        login_input = request.POST.get('login')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        password_confirm = request.POST.get('password_confirm')
+
+        if password != password_confirm:
+            return render(request, 'register.html', {
+                'error': 'Hasła nie są takie same.'
+            })
+
+        if not is_strong_password(password):
+            return render(request, 'register.html', {
+                'error': 'Hasło nie spełnia wymagań bezpieczeństwa.'
+            })
+
+        if is_password_pwned(password):
+            return render(request, 'register.html', {
+                'error': 'To hasło występuje w znanych wyciekach. Wybierz inne hasło.'
+            })
+
+        if User.objects.filter(login=login_input).exists():
+            return render(request, 'register.html', {
+                'error': 'Login jest już zajęty.'
+            })
+
+        if User.objects.filter(email=email).exists():
+            return render(request, 'register.html', {
+                'error': 'Adres e-mail jest już używany.'
+            })
+
+        user = User.objects.create_user(login=login_input, email=email, password=password)
+        login(request, user)
+        return redirect('dashboard')

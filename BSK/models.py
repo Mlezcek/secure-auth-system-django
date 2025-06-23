@@ -36,6 +36,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     last_mfa_reset = models.DateTimeField(null=True, blank=True)
 
+    faceid_token = models.CharField(max_length=255, blank=True, null=True)
+
     USERNAME_FIELD = 'login'
     REQUIRED_FIELDS = ['email']
 
