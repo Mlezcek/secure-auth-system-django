@@ -24,6 +24,10 @@ class MFASetupView(View):
             # Generate new secret
             user.mfa_secret = pyotp.random_base32()
             user.save()
+        else:
+            # If the secret already exists simply redirect back to the
+            # dashboard – the QR code should not be shown again.
+            return redirect('dashboard')
 
         totp = pyotp.TOTP(user.mfa_secret)
         otp_auth_url = totp.provisioning_uri(name=user.email, issuer_name='BSK System')
