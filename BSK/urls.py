@@ -5,7 +5,8 @@ from .views import LoginView, dashboard_view, PasswordResetRequestView, Password
     BlockedIPsAdminView, logout_view, toggle_mfa, remove_trusted_device, verify_backup_code_view, backup_codes_view, \
     download_backup_codes, generate_backup_codes_ajax, admin_audit_log_view, admin_dashboard_view, \
     admin_user_action_view, admin_block_ip_view, admin_unblock_ip_view, ajax_search_users, ajax_search_ips, \
-    ajax_search_logs, test_geoip, reset_mfa_view, RegisterView
+    ajax_search_logs, test_geoip, reset_mfa_view, RegisterView, webauthn_register_options, webauthn_register_verify, \
+    webauthn_login_options, webauthn_login_verify
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
@@ -40,5 +41,9 @@ path('admin/ajax/search_logs/', ajax_search_logs, name='ajax_search_logs'),
 
 path('test_geoip/', test_geoip),
 
-
+   path('webauthn/register/options', webauthn_register_options, name='webauthn_register_options'),
+    path('webauthn/register/verify', webauthn_register_verify, name='webauthn_register_verify'),
+    path('webauthn/login/options', webauthn_login_options, name='webauthn_login_options'),
+    path('webauthn/login/verify', webauthn_login_verify, name='webauthn_login_verify'),
 ]
+

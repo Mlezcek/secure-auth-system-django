@@ -41,12 +41,58 @@
         Zapomniałeś hasła?
       </a>
     </p>
-  <p class="text-center text-sm text-gray-500 mt-2">
-      <a href="{% url 'faceid_login' %}" class="text-blue-600 hover:underline">
-        Zaloguj się z FaceID
-      </a>
-    </p>
-  </div>
 
+  </div>
+<p class="text-center text-sm text-gray-500 mt-2">
+  <button id="login-faceid" class="text-blue-600 hover:underline">Zaloguj z Face ID</button>
+</p>
+
+<script>
+document.getElementById('login-faceid').addEventListener('click', async () => {
+  const username = document.getElementById('username').value;
+  const res = await fetch(`/webauthn/login/options?username=${username}`);
+  const options = await res.json();
+    
+  function base64urlToBuffer(base64url) {
+  const padding = '='.repeat((4 - base64url.length % 4) % 4);
+  const base64 = (base64url + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+  
+  options.challenge = base64urlToBuffer(options.challenge);
+options.allowCredentials.forEach(c => {
+  c.id = base64urlToBuffer(c.id);
+});
+
+  const cred = await navigator.credentials.get({ publicKey: options });
+  const data = {
+    id: cred.id,
+    rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
+    response: {
+      authenticatorData: btoa(String.fromCharCode(...new Uint8Array(cred.response.authenticatorData))),
+      clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(cred.response.clientDataJSON))),
+      signature: btoa(String.fromCharCode(...new Uint8Array(cred.response.signature))),
+      userHandle: cred.response.userHandle ? btoa(String.fromCharCode(...new Uint8Array(cred.response.userHandle))) : null
+    },
+    type: cred.type
+  };
+
+  const verify = await fetch('/webauthn/login/verify', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+
+  const result = await verify.json();
+  if (result.success) {
+    window.location.href = result.redirect_url;
+  } else {
+    alert("Błąd Face ID: " + result.error);
+  }
+});
+</script>
 </body>
 </html>

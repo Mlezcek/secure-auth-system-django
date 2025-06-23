@@ -150,3 +150,11 @@ class AdminAuditLog(models.Model):
 
     def __str__(self):
         return f"{self.timestamp} – {self.admin.login}: {self.action}"
+
+class WebAuthnKey(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    credential_id = models.CharField(max_length=255, unique=True)
+    public_key = models.TextField()
+    sign_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    nickname = models.CharField(max_length=255, blank=True)

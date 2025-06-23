@@ -85,6 +85,24 @@
       {% endif %}
     </div>
 
+    <div class="mb-6">
+  <h3 class="text-lg font-semibold text-gray-800 mb-2">Face ID / Klucz bezpieczeństwa</h3>
+
+  {% if user.webauthnkey_set.exists %}
+    <ul class="mb-2">
+      {% for key in user.webauthnkey_set.all %}
+        <li class="text-sm text-gray-700">{{ key.nickname|default:"Klucz WebAuthn" }} — dodany {{ key.created_at|date:"Y-m-d H:i" }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-gray-500 mb-2">Brak dodanych kluczy WebAuthn.</p>
+  {% endif %}
+
+  <button id="setup-webauthn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Dodaj klucz WebAuthn</button>
+</div>
+
+
+
     <!-- Ostatnie logowania -->
     <div class="grid md:grid-cols-2 gap-6">
       <!-- Udane -->
@@ -113,6 +131,40 @@
     </div>
 
   </div>
+<script>
+document.getElementById('setup-webauthn').addEventListener('click', async () => {
+  const res = await fetch('/webauthn/register/options');
+  const options = await res.json();
 
+  options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
+  options.user.id = Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0));
+
+  const cred = await navigator.credentials.create({ publicKey: options });
+    console.log("options.user.id:", options.user.id);
+  const data = {
+    id: cred.id,
+    rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
+    type: cred.type,
+    response: {
+      attestationObject: btoa(String.fromCharCode(...new Uint8Array(cred.response.attestationObject))),
+      clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(cred.response.clientDataJSON)))
+    }
+  };
+
+  const verify = await fetch('/webauthn/register/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  const result = await verify.json();
+  if (result.success) {
+    alert("Klucz WebAuthn został dodany.");
+    window.location.reload();
+  } else {
+    alert("Błąd: " + result.error);
+  }
+});
+</script>
 </body>
 </html>

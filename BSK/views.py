@@ -1,3 +1,4 @@
+import base64
 import json
 from datetime import timedelta, datetime
 
@@ -9,6 +10,7 @@ from django.http import HttpResponse, Http404, JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
+from webauthn.helpers.structs import PublicKeyCredentialDescriptor
 
 from .hibp_utils import is_password_pwned
 from .mail import send_new_login_email, send_password_reset_email, send_mfa_reset_email
@@ -23,8 +25,8 @@ from django.utils.timezone import now, localtime
 from django.views import View
 
 from .models import LoginAttempt, LoginEvent, ResetPasswordToken, PasswordResetTokenEvent, BlockedIP, TrustedDevice, \
-    BackupCode, AdminAuditLog
-from .utils import verify_recaptcha, log_admin_action, kill_other_sessions, is_strong_password, verify_faceid_token
+    BackupCode, AdminAuditLog, WebAuthnKey
+from .utils import verify_recaptcha, log_admin_action, kill_other_sessions, is_strong_password
 from .utils import check_and_handle_blocking, process_password_reset
 
 from django.conf import settings
@@ -783,3 +785,124 @@ class FaceIDSetupView(View):
         user.faceid_token = token or None
         user.save()
         return redirect('dashboard')
+
+
+from webauthn.helpers import options_to_json
+from webauthn import generate_registration_options, generate_authentication_options, verify_registration_response, verify_authentication_response
+
+from django.views.decorators.csrf import csrf_exempt
+from django.middleware.csrf import get_token
+
+@csrf_exempt
+@login_required
+@csrf_exempt
+@login_required
+def webauthn_register_options(request):
+    rp_id = request.get_host().split(":")[0]
+    rp_name = "Panel Użytkownika"
+    user_id_bytes = str(request.user.id).encode()
+
+    options = generate_registration_options(
+        rp_id=rp_id,
+        rp_name=rp_name,
+        user_id=user_id_bytes,
+        user_name=request.user.login,
+    )
+
+    # Zapisz challenge jako string, np. base64 lub hex
+    request.session['webauthn_challenge'] = base64.b64encode(options.challenge).decode()
+
+    # Zamień user.id na base64 string dla JS
+    options_dict = json.loads(options_to_json(options))
+    user_id_bytes = str(request.user.id).encode()
+    options_dict['user']['id'] = base64.b64encode(user_id_bytes).decode()
+    print("ID base64:", options_dict['user']['id'])
+    return JsonResponse(options_dict)
+
+
+@csrf_exempt
+@login_required
+def webauthn_register_verify(request):
+    data = json.loads(request.body)
+    challenge = base64.b64decode(request.session.get('webauthn_challenge'))
+    if not challenge:
+        return JsonResponse({'error': 'Brak wyzwania'}, status=400)
+
+    try:
+        verified = verify_registration_response(
+            credential=data,
+            expected_challenge=challenge,
+            expected_rp_id=request.get_host(),
+            expected_origin=f"https://{request.get_host()}",
+        )
+
+        WebAuthnKey.objects.create(
+            user=request.user,
+            credential_id=verified.credential_id,
+            public_key=verified.credential_public_key,
+            sign_count=verified.sign_count
+        )
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@csrf_exempt
+def webauthn_login_options(request):
+    login = request.GET.get('username')
+    user = User.objects.filter(login=login).first()
+    if not user:
+        return JsonResponse({'error': 'Nie znaleziono użytkownika'}, status=404)
+
+    keys = WebAuthnKey.objects.filter(user=user)
+    allow_credentials = [
+        PublicKeyCredentialDescriptor(id=bytes.fromhex(k.credential_id), type='public-key')
+        for k in keys
+    ]
+
+    rp_id = request.get_host().split(':')[0]
+
+    options = generate_authentication_options(
+        rp_id=rp_id,
+        allow_credentials=allow_credentials,
+    )
+
+    # 🔒 Zamiana bytes na base64 przed zapisem do sesji
+    challenge_b64 = base64.b64encode(options.challenge).decode('utf-8')
+    request.session['webauthn_challenge'] = challenge_b64
+    request.session['webauthn_login_user'] = user.id
+
+    from webauthn.helpers import options_to_json
+    return JsonResponse(json.loads(options_to_json(options)))
+
+
+@csrf_exempt
+def webauthn_login_verify(request):
+    data = json.loads(request.body)
+    challenge = base64.b64decode(request.session.get('webauthn_challenge', ''))
+    user_id = request.session.get('webauthn_login_user')
+    if not challenge or not user_id:
+        return JsonResponse({'error': 'Brak danych sesji'}, status=400)
+
+    user = User.objects.get(id=user_id)
+    key = WebAuthnKey.objects.filter(user=user, credential_id=data['id']).first()
+    if not key:
+        return JsonResponse({'error': 'Nieprawidłowy klucz'}, status=403)
+
+    try:
+        verified = verify_authentication_response(
+            credential=data,
+            expected_challenge=challenge,
+            expected_rp_id=request.get_host(),
+            expected_origin=f"https://{request.get_host()}",
+            credential_public_key=key.public_key,
+            credential_current_sign_count=key.sign_count
+        )
+
+        key.sign_count = verified.new_sign_count
+        key.save()
+
+        login(request, user)
+        return JsonResponse({'success': True, 'redirect_url': '/dashboard/'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
