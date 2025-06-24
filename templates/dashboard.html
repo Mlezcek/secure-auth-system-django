@@ -136,8 +136,17 @@ document.getElementById('setup-webauthn').addEventListener('click', async () => 
   const res = await fetch('/webauthn/register/options');
   const options = await res.json();
 
-  options.challenge = Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0));
-  options.user.id = Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0));
+  function base64urlToBuffer(base64url) {
+    const padding = '='.repeat((4 - base64url.length % 4) % 4);
+    const base64 = (base64url + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
+
+  options.challenge = base64urlToBuffer(options.challenge);
+  options.user.id = base64urlToBuffer(options.user.id);
 
   const cred = await navigator.credentials.create({ publicKey: options });
     console.log("options.user.id:", options.user.id);
