@@ -88,7 +88,8 @@ class MFAVerifyView(View):
             kill_other_sessions(user, request.session.session_key)
 
             # Przygotowujemy redirect jako response
-            response = redirect('dashboard')
+            target = 'change_password' if user.must_change_password else 'dashboard'
+            response = redirect(target)
 
             auth_token = generate_auth_token(str(uuid.uuid4()))  # losowy
             request.session["auth_token"] = auth_token

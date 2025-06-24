@@ -133,7 +133,9 @@ class LoginView(View):
 
                     kill_other_sessions(auth_user, request.session.session_key)
 
-                    response = redirect('dashboard')
+                    target = 'change_password' if auth_user.must_change_password else 'dashboard'
+                    response = redirect(target)
+
                     if request.COOKIES.get('auth_token'):
                         response.set_cookie(
                             'auth_token',
@@ -157,7 +159,7 @@ class LoginView(View):
                     if new_ip and auth_user.email:
                         send_new_login_email(auth_user, ip)
 
-                    return redirect('dashboard')
+                    return redirect(target)
                 else:
                     request.session['pre_mfa_user_id'] = auth_user.id
                     return redirect('mfa_verify')
@@ -168,7 +170,8 @@ class LoginView(View):
             auth_token = generate_auth_token(str(uuid.uuid4()))
             request.session["auth_token"] = auth_token
 
-            response = redirect('dashboard')
+            target = 'change_password' if auth_user.must_change_password else 'dashboard'
+            response = redirect(target)
             response.set_cookie(
                 'auth_token',
                 auth_token,
@@ -195,6 +198,31 @@ class LoginView(View):
         return render(request, 'login.html', {
             'error': 'Niepoprawne dane logowania.'
         })
+
+
+@login_required
+def change_password_view(request):
+    if not request.user.must_change_password:
+        return redirect('dashboard')
+
+    if request.method == "POST":
+        new_password = request.POST.get("new_password")
+        if not is_strong_password(new_password):
+            return render(request, 'change_password.html', {
+                'error': 'Hasło nie spełnia wymagań bezpieczeństwa.'
+            })
+        if is_password_pwned(new_password):
+            return render(request, 'change_password.html', {
+                'error': 'To hasło zostało znalezione w znanych wyciekach. Wybierz inne hasło.'
+            })
+
+        request.user.set_password(new_password)
+        request.user.must_change_password = False
+        request.user.save()
+        kill_other_sessions(request.user, request.session.session_key)
+        return redirect('dashboard')
+
+    return render(request, 'change_password.html')
 
 class PasswordResetRequestView(View):
     def get(self, request):
@@ -446,7 +474,8 @@ def verify_backup_code_view(request):
                 if new_ip and user.email:
                     send_new_login_email(user, ip)
 
-                return JsonResponse({'success': True, 'redirect_url': '/dashboard/'})
+                target = '/change_password/' if user.must_change_password else '/dashboard/'
+                return JsonResponse({'success': True, 'redirect_url': target})
 
         LoginAttempt.objects.create(
             user=user,
