@@ -790,12 +790,14 @@ def webauthn_login_options(request):
 
     keys = WebAuthnKey.objects.filter(user=user)
 
-    def pad_base64(s):
-        return s + '=' * (-len(s) % 4)
+    def pad_base64(s: str) -> bytes:
+        """Return correctly padded bytes for urlsafe base64."""
+        padded = s + '=' * (-len(s) % 4)
+        return base64.urlsafe_b64decode(padded)
 
     allow_credentials = [
         PublicKeyCredentialDescriptor(
-            id=base64.b64decode(pad_base64(k.credential_id)),
+            id=pad_base64(k.credential_id),
             type=PublicKeyCredentialType.PUBLIC_KEY,  # <-- nie "public-key" jako string
         )
         for k in keys
