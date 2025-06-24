@@ -715,77 +715,6 @@ class RegisterView(View):
         login(request, user)
         return redirect('dashboard')
 
-class FaceIDLoginView(View):
-    def get(self, request):
-        return render(request, 'faceid_login.html')
-
-    def post(self, request):
-        token = request.POST.get('token')
-        ip = get_client_ip(request)
-        user_agent = request.META.get('HTTP_USER_AGENT', '')
-
-        user = verify_faceid_token(token)
-
-        LoginAttempt.objects.create(
-            user=user if user else None,
-            username_entered=user.login if user else 'FACEID',
-            ip_address=ip,
-            user_agent=user_agent,
-            success=bool(user),
-            mfa_used=False,
-        )
-
-        if user:
-            login(request, user)
-            kill_other_sessions(user, request.session.session_key)
-            auth_token = generate_auth_token(str(uuid.uuid4()))
-            request.session['auth_token'] = auth_token
-
-            response = redirect('dashboard')
-            response.set_cookie(
-                'auth_token',
-                auth_token,
-                max_age=60 * 15,
-                httponly=True,
-                secure=True,
-                samesite='Lax'
-            )
-
-            new_ip = not LoginEvent.objects.filter(user=user, ip_address=ip).exists()
-            LoginEvent.objects.create(
-                user=user,
-                ip_address=ip,
-                user_agent=user_agent,
-                location_info=get_location_from_ip(ip),
-            )
-            if new_ip and user.email:
-                send_new_login_email(user, ip)
-
-            return response
-
-        return render(request, 'faceid_login.html', {
-            'error': 'FaceID authentication failed.'
-        })
-
-class FaceIDSetupView(View):
-    """Allow a logged in user to assign or update their FaceID token."""
-
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
-
-    def get(self, request):
-        return render(request, 'faceid_setup.html', {
-            'current_token': request.user.faceid_token
-        })
-
-    def post(self, request):
-        token = request.POST.get('token', '').strip()
-        user = request.user
-        user.faceid_token = token or None
-        user.save()
-        return redirect('dashboard')
-
 
 from webauthn.helpers import options_to_json
 from webauthn import generate_registration_options, generate_authentication_options, verify_registration_response, verify_authentication_response
@@ -838,9 +767,9 @@ def webauthn_register_verify(request):
 
         WebAuthnKey.objects.create(
             user=request.user,
-            credential_id=verified.credential_id,
-            public_key=verified.credential_public_key,
-            sign_count=verified.sign_count
+            credential_id=base64.urlsafe_b64encode(verified.credential_id).rstrip(b'=').decode(),
+            public_key=base64.b64encode(verified.credential_public_key).decode(),
+            sign_count=verified.sign_count,
         )
         return JsonResponse({'success': True})
     except Exception as e:
@@ -856,7 +785,7 @@ def webauthn_login_options(request):
 
     keys = WebAuthnKey.objects.filter(user=user)
     allow_credentials = [
-        PublicKeyCredentialDescriptor(id=bytes.fromhex(k.credential_id), type='public-key')
+        PublicKeyCredentialDescriptor(id=base64.urlsafe_b64decode(k.credential_id + '=='), type='public-key')
         for k in keys
     ]
 
@@ -895,8 +824,8 @@ def webauthn_login_verify(request):
             expected_challenge=challenge,
             expected_rp_id=request.get_host(),
             expected_origin=f"https://{request.get_host()}",
-            credential_public_key=key.public_key,
-            credential_current_sign_count=key.sign_count
+            credential_public_key=base64.b64decode(key.public_key),
+            credential_current_sign_count=key.sign_count,
         )
 
         key.sign_count = verified.new_sign_count
