@@ -12,9 +12,10 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.shortcuts import render, redirect
 
-from BSK.models import User
-from BSK.trusted_device_utils import register_trusted_device, generate_auth_token
-from BSK.utils import kill_other_sessions
+from BSK.mail import send_new_login_email
+from BSK.models import User, LoginEvent, LoginAttempt
+from BSK.trusted_device_utils import register_trusted_device, generate_auth_token, get_location_from_ip
+from BSK.utils import kill_other_sessions, get_client_ip
 
 
 class MFASetupView(View):
@@ -57,11 +58,32 @@ class MFAVerifyView(View):
         user_id = request.session.get('pre_mfa_user_id')
         user = User.objects.get(id=user_id)
         code = request.POST.get('mfa_code')
+        ip = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
 
         totp = pyotp.TOTP(user.mfa_secret)
         if totp.verify(code):
             del request.session['pre_mfa_user_id']
             login(request, user)
+
+            LoginAttempt.objects.create(
+                user=user,
+                username_entered=user.login,
+                ip_address=ip,
+                user_agent=user_agent,
+                success=True,
+                mfa_used=True,
+            )
+
+            new_ip = not LoginEvent.objects.filter(user=user, ip_address=ip).exists()
+            LoginEvent.objects.create(
+                user=user,
+                ip_address=ip,
+                user_agent=user_agent,
+                location_info=get_location_from_ip(ip),
+            )
+            if new_ip and user.email:
+                send_new_login_email(user, ip)
 
             kill_other_sessions(user, request.session.session_key)
 
@@ -85,6 +107,16 @@ class MFAVerifyView(View):
 
             return response
         else:
+
+            LoginAttempt.objects.create(
+                user=user,
+                username_entered=user.login,
+                ip_address=ip,
+                user_agent=user_agent,
+                success=False,
+                mfa_used=True,
+            )
+
             return render(request, 'mfa_verify.html', {
                 'error': 'Niepoprawny kod MFA.'
             })

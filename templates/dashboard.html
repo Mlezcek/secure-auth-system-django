@@ -114,9 +114,6 @@
       <div class="p-5">
         <div class="flex flex-wrap gap-3 items-center">
           {% if request.user.mfa_secret %}
-            <a href="{% url 'mfa_setup' %}" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm shadow hover:bg-blue-700 transition-colors">
-              Zobacz kod QR
-            </a>
             <a href="{% url 'reset_mfa' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors">
               Resetuj MFA
             </a>

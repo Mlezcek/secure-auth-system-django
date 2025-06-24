@@ -209,6 +209,20 @@ class PasswordResetRequestView(View):
                 'site_key': settings.RECAPTCHA_SITE_KEY
             }
             return render(request, 'password_reset_request.html', context)
+
+        ip = get_client_ip(request)
+        rate_limit = getattr(settings, 'PASSWORD_RESET_TOKEN_LIMIT_PER_IP', 5)
+        period = getattr(settings, 'PASSWORD_RESET_TOKEN_PERIOD_MINUTES', 15)
+        recent = PasswordResetTokenEvent.objects.filter(
+            ip_address=ip,
+            timestamp__gte=now() - timedelta(minutes=period)
+        ).count()
+        if recent >= rate_limit:
+            return HttpResponse(
+                'Zbyt wiele żądań resetu hasła z tego adresu IP.',
+                status=429
+            )
+
         email = request.POST.get('email')
         user = User.objects.filter(email=email).first()
 
@@ -406,14 +420,42 @@ def verify_backup_code_view(request):
             return JsonResponse({'success': False, 'error': 'Brak użytkownika MFA'}, status=400)
 
         user = User.objects.get(id=user_id)
+        ip = get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
         for code in BackupCode.objects.filter(user=user, used=False):
             if code.check_code(code_input):
                 code.used = True
                 code.save()
                 del request.session['pre_mfa_user_id']
                 login(request, user)
+                LoginAttempt.objects.create(
+                    user=user,
+                    username_entered=user.login,
+                    ip_address=ip,
+                    user_agent=user_agent,
+                    success=True,
+                    mfa_used=True,
+                )
+                new_ip = not LoginEvent.objects.filter(user=user, ip_address=ip).exists()
+                LoginEvent.objects.create(
+                    user=user,
+                    ip_address=ip,
+                    user_agent=user_agent,
+                    location_info=get_location_from_ip(ip),
+                )
+                if new_ip and user.email:
+                    send_new_login_email(user, ip)
+
                 return JsonResponse({'success': True, 'redirect_url': '/dashboard/'})
 
+        LoginAttempt.objects.create(
+            user=user,
+            username_entered=user.login,
+            ip_address=ip,
+            user_agent=user_agent,
+            success=False,
+            mfa_used=True,
+        )
         return JsonResponse({'success': False, 'error': 'Nieprawidłowy kod awaryjny'})
 
     except Exception as e:
@@ -798,7 +840,7 @@ def webauthn_login_options(request):
     allow_credentials = [
         PublicKeyCredentialDescriptor(
             id=pad_base64(k.credential_id),
-            type=PublicKeyCredentialType.PUBLIC_KEY,  # <-- nie "public-key" jako string
+            type=PublicKeyCredentialType.PUBLIC_KEY,
         )
         for k in keys
     ]
@@ -828,6 +870,9 @@ def webauthn_login_verify(request):
         return JsonResponse({'error': 'Brak danych sesji'}, status=400)
 
     user = User.objects.get(id=user_id)
+    ip = get_client_ip(request)
+    user_agent = request.META.get('HTTP_USER_AGENT', '')
+
 
     def normalize_b64(s):
         return base64.urlsafe_b64encode(base64.urlsafe_b64decode(s + '=' * (-len(s) % 4))).decode()
@@ -857,8 +902,33 @@ def webauthn_login_verify(request):
         key.save()
 
         login(request, user)
+        LoginAttempt.objects.create(
+            user=user,
+            username_entered=user.login,
+            ip_address=ip,
+            user_agent=user_agent,
+            success=True,
+            mfa_used=True,
+        )
+        new_ip = not LoginEvent.objects.filter(user=user, ip_address=ip).exists()
+        LoginEvent.objects.create(
+            user=user,
+            ip_address=ip,
+            user_agent=user_agent,
+            location_info=get_location_from_ip(ip),
+        )
+        if new_ip and user.email:
+            send_new_login_email(user, ip)
         return JsonResponse({'success': True, 'redirect_url': '/dashboard/'})
     except Exception as e:
+        LoginAttempt.objects.create(
+            user=user,
+            username_entered=user.login,
+            ip_address=ip,
+            user_agent=user_agent,
+            success=False,
+            mfa_used=True,
+        )
         return JsonResponse({'error': str(e)}, status=400)
 
 @login_required
