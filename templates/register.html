@@ -5,48 +5,123 @@
   <title>Rejestracja</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex items-center justify-center p-4 font-sans">
 
-  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
-    <h2 class="text-2xl font-bold text-center text-blue-600 mb-6">Rejestracja</h2>
+  <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+    <div class="text-center mb-8">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+      </svg>
+      <h2 class="text-2xl font-bold text-gray-800 mt-4">Dołącz do nas</h2>
+      <p class="text-gray-500 text-sm mt-2">Wypełnij formularz, aby założyć konto</p>
+    </div>
 
     {% if error %}
-      <p class="text-red-600 text-sm text-center mb-4">{{ error }}</p>
+      <div class="mb-6 px-4 py-3 bg-red-50 text-red-700 rounded-lg border-l-4 border-red-500 flex items-start">
+        <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        <span>{{ error }}</span>
+      </div>
     {% endif %}
 
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-6">
       {% csrf_token %}
 
-      <div>
-        <label for="login" class="block text-sm font-medium text-gray-700 mb-1">Login</label>
-        <input type="text" name="login" id="login" required
-               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div class="space-y-2">
+        <label for="login" class="block text-sm font-medium text-gray-700">Login</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <input type="text" name="login" id="login" required
+                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
+                 placeholder="Wprowadź login">
+        </div>
       </div>
 
-      <div>
-        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Adres e-mail</label>
-        <input type="email" name="email" id="email" required
-               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div class="space-y-2">
+        <label for="email" class="block text-sm font-medium text-gray-700">Adres e-mail</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+            </svg>
+          </div>
+          <input type="email" name="email" id="email" required
+                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
+                 placeholder="twoj@email.com">
+        </div>
       </div>
 
-      <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Hasło</label>
-        <input type="password" name="password" id="password" required
-               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div class="space-y-2">
+        <label for="password" class="block text-sm font-medium text-gray-700">Hasło</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <input type="password" name="password" id="password" required
+                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
+                 placeholder="Wprowadź hasło">
+        </div>
       </div>
 
-      <div>
-        <label for="password_confirm" class="block text-sm font-medium text-gray-700 mb-1">Potwierdź hasło</label>
-        <input type="password" name="password_confirm" id="password_confirm" required
-               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div class="space-y-2">
+        <label for="password_confirm" class="block text-sm font-medium text-gray-700">Potwierdź hasło</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <input type="password" name="password_confirm" id="password_confirm" required
+                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
+                 placeholder="Powtórz hasło">
+        </div>
+      </div>
+
+      <div class="flex items-center">
+        <input id="terms" name="terms" type="checkbox" class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded" required>
+        <label for="terms" class="ml-2 block text-sm text-gray-700">
+          Akceptuję <a href="#" class="text-primary-600 hover:text-primary-700 hover:underline">warunki korzystania</a> i <a href="#" class="text-primary-600 hover:text-primary-700 hover:underline">politykę prywatności</a>
+        </label>
       </div>
 
       <button type="submit"
-              class="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md shadow hover:bg-blue-700 transition">
+              class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition">
         Zarejestruj się
       </button>
     </form>
+
+    <div class="mt-6 text-center">
+      <p class="text-sm text-gray-600">
+        Masz już konto? <a href="{% url 'login' %}" class="text-primary-600 hover:text-primary-700 hover:underline">Zaloguj się</a>
+      </p>
+    </div>
   </div>
 
 </body>

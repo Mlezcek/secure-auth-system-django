@@ -179,6 +179,7 @@
                     {{ key.nickname|default:"Klucz WebAuthn" }} — dodany {{ key.created_at|date:"Y-m-d H:i" }}
                   </span>
                   <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Aktywny</span>
+                <button data-key="{{ key.id }}" class="remove-key text-red-600 hover:text-red-800 text-sm font-medium transition-colors ml-3">Usuń</button>
                 </div>
               </li>
             {% endfor %}
@@ -294,6 +295,43 @@
         console.error("Błąd WebAuthn:", error);
         alert("Wystąpił błąd podczas konfiguracji WebAuthn: " + error.message);
       }
+
+      document.querySelectorAll('.remove-device').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Usunąć zaufane urządzenie?')) return;
+        const id = btn.dataset.device;
+        const res = await fetch(`/trusted/remove/${id}/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Urządzenie zostało usunięte.');
+          btn.closest('li').remove();
+        } else {
+          alert(data.error || 'Wystąpił błąd.');
+        }
+      });
+    });
+
+    document.querySelectorAll('.remove-key').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Usunąć klucz WebAuthn?')) return;
+        const id = btn.dataset.key;
+        const res = await fetch(`/webauthn/remove/${id}/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Klucz został usunięty.');
+          btn.closest('li').remove();
+        } else {
+          alert(data.error || 'Wystąpił błąd.');
+        }
+      });
+    });
+
     });
   </script>
 </body>

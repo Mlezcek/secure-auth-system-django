@@ -860,3 +860,11 @@ def webauthn_login_verify(request):
         return JsonResponse({'success': True, 'redirect_url': '/dashboard/'})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+@login_required
+@require_POST
+def remove_webauthn_key(request, key_id):
+    key = WebAuthnKey.objects.filter(user=request.user, id=key_id).first()
+    if key:
+        key.delete()
+    return JsonResponse({'success': True})

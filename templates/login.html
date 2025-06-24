@@ -17,6 +17,10 @@
             primary: {
               600: '#2563eb',
               700: '#1d4ed8',
+            },
+            secondary: {
+              600: '#4b5563',
+              700: '#374151',
             }
           }
         }
@@ -86,10 +90,17 @@
         </a>
       </div>
 
-      <button type="submit"
-              class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition">
-        Zaloguj się
-      </button>
+      <div class="space-y-3">
+        <button type="submit"
+                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition">
+          Zaloguj się
+        </button>
+
+        <a href="{% url 'register' %}"
+           class="w-full flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-500 transition">
+          Zarejestruj się
+        </a>
+      </div>
     </form>
 
     <div class="mt-6">
