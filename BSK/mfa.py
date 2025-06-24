@@ -12,6 +12,10 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.shortcuts import render, redirect
 
+from django.conf import settings
+from django.utils.timezone import now
+from datetime import timedelta
+
 from BSK.mail import send_new_login_email
 from BSK.models import User, LoginEvent, LoginAttempt
 from BSK.trusted_device_utils import register_trusted_device, generate_auth_token, get_location_from_ip
@@ -26,8 +30,7 @@ class MFASetupView(View):
             user.mfa_secret = pyotp.random_base32()
             user.save()
         else:
-            # If the secret already exists simply redirect back to the
-            # dashboard – the QR code should not be shown again.
+
             return redirect('dashboard')
 
         totp = pyotp.TOTP(user.mfa_secret)
@@ -60,6 +63,18 @@ class MFAVerifyView(View):
         code = request.POST.get('mfa_code')
         ip = get_client_ip(request)
         user_agent = request.META.get('HTTP_USER_AGENT', '')
+
+        limit = getattr(settings, 'MFA_ATTEMPTS_PER_MINUTE', 5)
+        recent_attempts = LoginAttempt.objects.filter(
+            user=user,
+            mfa_used=True,
+            timestamp__gte=now() - timedelta(minutes=1)
+        ).count()
+        if recent_attempts >= limit:
+            return HttpResponse(
+                'Zbyt wiele prób weryfikacji MFA. Spróbuj ponownie później.',
+                status=429,
+            )
 
         totp = pyotp.TOTP(user.mfa_secret)
         if totp.verify(code):
@@ -100,7 +115,7 @@ class MFAVerifyView(View):
                 response.set_cookie(
                     'auth_token',
                     auth_token,
-                    max_age=60 * 15,  # krótki czas, np. 15 min
+                    max_age=60 * 15,  #15 min
                     httponly=True,
                     secure=True,
                     samesite='Lax'

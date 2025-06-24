@@ -7,7 +7,7 @@ def calculate_security_score(user):
     max_score = 4
     alerts = []
 
-    # MFA włączone?
+    # MFA włączone
     if user.mfa_enabled:
         score += 1
     else:

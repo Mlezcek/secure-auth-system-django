@@ -33,7 +33,7 @@ def get_device_name(user_agent_str):
     ua = user_agents.parse(user_agent_str)
     return f"{ua.os.family} {ua.os.version_string} - {ua.device.family}"
 
-# Czy pominąć MFA dla tego urządzenia?
+# Czy pominąć MFA dla tego urządzenia
 def should_skip_mfa_for_device(request, user):
     device_id = get_device_id_from_request(request)
     user_agent = request.META.get('HTTP_USER_AGENT', '')
@@ -56,7 +56,7 @@ def should_skip_mfa_for_device(request, user):
     current_location_country = location.split(",")[-1].strip()
 
     if trusted_location_country != current_location_country:
-        return False  # kraj się zmienił → wymuś MFA
+        return False  # kraj się zmienił
 
     if trusted_device.user_agent != user_agent:
         return False

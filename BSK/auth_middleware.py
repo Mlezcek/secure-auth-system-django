@@ -5,7 +5,7 @@ from .models import TrustedDevice
 class AuthTokenMiddleware(MiddlewareMixin):
     def process_request(self, request):
         if 'auth_token' not in request.session:
-            return  # nie sprawdzaj, bo logowanie jeszcze trwa
+            return  # nie sprawdzaj
 
         if not request.user.is_authenticated:
             return
@@ -13,7 +13,6 @@ class AuthTokenMiddleware(MiddlewareMixin):
         cookie_token = request.COOKIES.get('auth_token')
         session_token = request.session.get('auth_token')
 
-        # Jeśli token zapisany w TrustedDevice
         device_id = request.COOKIES.get('trusted_device_id')
         if device_id:
             device = TrustedDevice.objects.filter(
