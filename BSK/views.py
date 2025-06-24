@@ -828,7 +828,18 @@ def webauthn_login_verify(request):
         return JsonResponse({'error': 'Brak danych sesji'}, status=400)
 
     user = User.objects.get(id=user_id)
-    key = WebAuthnKey.objects.filter(user=user, credential_id=data['id']).first()
+
+    def normalize_b64(s):
+        return base64.urlsafe_b64encode(base64.urlsafe_b64decode(s + '=' * (-len(s) % 4))).decode()
+
+    normalized_id = normalize_b64(data['id'])
+
+    key = None
+    for candidate in WebAuthnKey.objects.filter(user=user):
+        if normalize_b64(candidate.credential_id) == normalized_id:
+            key = candidate
+            break
+
     if not key:
         return JsonResponse({'error': 'Nieprawidłowy klucz'}, status=403)
 

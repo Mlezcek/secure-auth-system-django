@@ -5,94 +5,173 @@
   <title>Logowanie</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex items-center justify-center p-4 font-sans">
 
-  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
-    <h2 class="text-2xl font-bold text-center text-blue-600 mb-6">Logowanie</h2>
+  <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+    <div class="text-center mb-8">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+      </svg>
+      <h2 class="text-3xl font-bold text-gray-800 mt-4">Logowanie</h2>
+      <p class="text-gray-500 text-sm mt-2">Wprowadź swoje dane, aby się zalogować</p>
+    </div>
 
     {% if error %}
-      <p class="text-red-600 text-sm text-center mb-4">{{ error }}</p>
+      <div class="mb-6 px-4 py-3 bg-red-50 text-red-700 rounded-lg border-l-4 border-red-500 flex items-start">
+        <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        <span>{{ error }}</span>
+      </div>
     {% endif %}
 
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-6">
       {% csrf_token %}
 
-      <div>
-        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Nazwa użytkownika</label>
-        <input type="text" name="username" id="username" required
-               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div class="space-y-2">
+        <label for="username" class="block text-sm font-medium text-gray-700">Nazwa użytkownika</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <input type="text" name="username" id="username" required
+                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
+                 placeholder="Wprowadź login">
+        </div>
       </div>
 
-      <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Hasło</label>
-        <input type="password" name="password" id="password" required
-               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div class="space-y-2">
+        <label for="password" class="block text-sm font-medium text-gray-700">Hasło</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <input type="password" name="password" id="password" required
+                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
+                 placeholder="Wprowadź hasło">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+          <label for="remember-me" class="ml-2 block text-sm text-gray-700">Zapamiętaj mnie</label>
+        </div>
+
+        <a href="{% url 'password_reset' %}" class="text-sm text-primary-600 hover:text-primary-700 hover:underline">
+          Zapomniałeś hasła?
+        </a>
       </div>
 
       <button type="submit"
-              class="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md shadow hover:bg-blue-700 transition">
+              class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition">
         Zaloguj się
       </button>
     </form>
 
-    <p class="text-center text-sm text-gray-500 mt-4">
-      <a href="{% url 'password_reset' %}" class="text-blue-600 hover:underline">
-        Zapomniałeś hasła?
-      </a>
-    </p>
+    <div class="mt-6">
+      <div class="relative">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-gray-300"></div>
+        </div>
+        <div class="relative flex justify-center text-sm">
+          <span class="px-2 bg-white text-gray-500">Lub zaloguj się przez</span>
+        </div>
+      </div>
 
+      <div class="mt-6 grid grid-cols-1 gap-3">
+        <button id="login-faceid" type="button"
+                class="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition">
+          <svg class="w-5 h-5 mr-2 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 15a3 3 0 100-6 3 3 0 000 6zm0-2a1 1 0 110-2 1 1 0 010 2zm0-8a4 4 0 00-4 4v1a1 1 0 002 0V9a2 2 0 014 0v1a1 1 0 002 0V9a4 4 0 00-4-4z"/>
+          </svg>
+          Face ID / Touch ID
+        </button>
+      </div>
+    </div>
   </div>
-<p class="text-center text-sm text-gray-500 mt-2">
-  <button id="login-faceid" class="text-blue-600 hover:underline">Zaloguj z Face ID</button>
-</p>
 
-<script>
-document.getElementById('login-faceid').addEventListener('click', async () => {
-  const username = document.getElementById('username').value;
-  const res = await fetch(`/webauthn/login/options?username=${username}`);
-  const options = await res.json();
-    
-  function base64urlToBuffer(base64url) {
-  const padding = '='.repeat((4 - base64url.length % 4) % 4);
-  const base64 = (base64url + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-  const raw = atob(base64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-}
-  
-  options.challenge = base64urlToBuffer(options.challenge);
-options.allowCredentials.forEach(c => {
-  c.id = base64urlToBuffer(c.id);
-});
+  <script>
+    document.getElementById('login-faceid').addEventListener('click', async () => {
+      const username = document.getElementById('username').value;
+      if (!username) {
+        alert('Proszę najpierw wprowadzić nazwę użytkownika');
+        return;
+      }
 
-  const cred = await navigator.credentials.get({ publicKey: options });
-  const data = {
-    id: cred.id,
-    rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
-    response: {
-      authenticatorData: btoa(String.fromCharCode(...new Uint8Array(cred.response.authenticatorData))),
-      clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(cred.response.clientDataJSON))),
-      signature: btoa(String.fromCharCode(...new Uint8Array(cred.response.signature))),
-      userHandle: cred.response.userHandle ? btoa(String.fromCharCode(...new Uint8Array(cred.response.userHandle))) : null
-    },
-    type: cred.type
-  };
+      try {
+        const res = await fetch(`/webauthn/login/options?username=${username}`);
+        if (!res.ok) throw new Error('Nie można uzyskać opcji logowania');
 
-  const verify = await fetch('/webauthn/login/verify', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(data)
-  });
+        const options = await res.json();
 
-  const result = await verify.json();
-  if (result.success) {
-    window.location.href = result.redirect_url;
-  } else {
-    alert("Błąd Face ID: " + result.error);
-  }
-});
-</script>
+        function base64urlToBuffer(base64url) {
+          const padding = '='.repeat((4 - base64url.length % 4) % 4);
+          const base64 = (base64url + padding)
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+          const raw = atob(base64);
+          return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+        }
+
+        options.challenge = base64urlToBuffer(options.challenge);
+        options.allowCredentials.forEach(c => {
+          c.id = base64urlToBuffer(c.id);
+        });
+
+        const cred = await navigator.credentials.get({ publicKey: options });
+        const data = {
+          id: cred.id,
+          rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
+          response: {
+            authenticatorData: btoa(String.fromCharCode(...new Uint8Array(cred.response.authenticatorData))),
+            clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(cred.response.clientDataJSON))),
+            signature: btoa(String.fromCharCode(...new Uint8Array(cred.response.signature))),
+            userHandle: cred.response.userHandle ? btoa(String.fromCharCode(...new Uint8Array(cred.response.userHandle))) : null
+          },
+          type: cred.type
+        };
+
+        const verify = await fetch('/webauthn/login/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await verify.json();
+        if (result.success) {
+          window.location.href = result.redirect_url;
+        } else {
+          alert("Błąd autentykacji: " + (result.error || "Nieznany błąd"));
+        }
+      } catch (error) {
+        console.error("Błąd WebAuthn:", error);
+        alert("Wystąpił błąd podczas logowania: " + error.message);
+      }
+    });
+  </script>
 </body>
 </html>

@@ -5,175 +5,296 @@
   <title>Panel użytkownika</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          boxShadow: {
+            card: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body class="bg-gray-100 min-h-screen py-10">
+<body class="bg-gray-50 min-h-screen py-10 font-sans">
 
-  <div class="max-w-4xl mx-auto px-4">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6">
 
     <!-- Nagłówek -->
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-gray-800">Witaj, {{ request.user.login }}</h2>
-      <a href="{% url 'logout' %}" class="px-4 py-2 bg-red-600 text-white rounded-md shadow hover:bg-red-700 transition">Wyloguj się</a>
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800">Witaj, {{ request.user.login }}</h2>
+        <p class="text-gray-500 text-sm mt-1">Ostatnie logowanie: {{ recent_success.0.timestamp|date:"Y-m-d H:i" }}</p>
+      </div>
+      <a href="{% url 'logout' %}" class="px-4 py-2 bg-red-600 text-white rounded-md shadow hover:bg-red-700 transition-colors duration-200 text-sm sm:text-base flex-shrink-0">
+        Wyloguj się
+      </a>
     </div>
 
-    <!-- Pasek bezpieczeństwa -->
-    <div class="mb-6">
-      <label class="block font-semibold text-gray-700 mb-1">Poziom zabezpieczenia konta:</label>
-      <div class="w-full bg-gray-200 rounded-full h-5 overflow-hidden">
-        <div class="bg-green-500 h-5 text-sm text-white text-center leading-5 transition-all"
-             style="width: {{ score }}%">
-          {{ score }}%
+    <!-- Karty z informacjami -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <!-- Pasek bezpieczeństwa -->
+      <div class="bg-white p-5 rounded-xl shadow-card">
+        <h3 class="font-semibold text-gray-700 mb-3">Poziom zabezpieczenia konta</h3>
+        <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden mb-2">
+          <div class="bg-gradient-to-r from-green-400 to-green-600 h-3 transition-all duration-500 ease-out"
+               style="width: {{ score }}%"></div>
+        </div>
+        <div class="flex justify-between text-sm text-gray-600">
+          <span>0%</span>
+          <span class="font-medium text-green-600">{{ score }}%</span>
+          <span>100%</span>
+        </div>
+      </div>
+
+      <!-- MFA Status -->
+      <div class="bg-white p-5 rounded-xl shadow-card">
+        <h3 class="font-semibold text-gray-700 mb-3">Weryfikacja dwuetapowa</h3>
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600">
+            {% if mfa_enabled %}
+              <span class="text-green-600 font-medium">Aktywna</span>
+            {% else %}
+              <span class="text-red-600 font-medium">Nieaktywna</span>
+            {% endif %}
+          </span>
+          <form method="POST" action="{% url 'toggle_mfa' %}" class="flex gap-2">
+            {% csrf_token %}
+            {% if mfa_enabled %}
+              <input type="hidden" name="enable" value="false">
+              <button type="submit" class="px-3 py-1.5 bg-yellow-500 text-white rounded-md text-sm shadow hover:bg-yellow-600 transition-colors">Wyłącz</button>
+            {% else %}
+              <input type="hidden" name="enable" value="true">
+              <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm shadow hover:bg-blue-700 transition-colors">Włącz</button>
+            {% endif %}
+          </form>
         </div>
       </div>
     </div>
 
     <!-- Ostrzeżenia -->
     {% for alert in alerts %}
-      <div class="mb-4 px-4 py-3 rounded-md
+      <div class="mb-5 px-4 py-3 rounded-lg border-l-4
                   {% if alert.level == 'danger' %}
-                    bg-red-100 text-red-700
+                    bg-red-50 text-red-700 border-red-500
                   {% elif alert.level == 'warning' %}
-                    bg-yellow-100 text-yellow-800
+                    bg-yellow-50 text-yellow-800 border-yellow-500
                   {% elif alert.level == 'success' %}
-                    bg-green-100 text-green-700
+                    bg-green-50 text-green-700 border-green-500
                   {% else %}
-                    bg-gray-100 text-gray-700
+                    bg-gray-50 text-gray-700 border-gray-400
                   {% endif %}">
-        {{ alert.text }}
+        <div class="flex items-center">
+          <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            {% if alert.level == 'danger' %}
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+            {% elif alert.level == 'warning' %}
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            {% elif alert.level == 'success' %}
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            {% else %}
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd"></path>
+            {% endif %}
+          </svg>
+          <span>{{ alert.text }}</span>
+        </div>
       </div>
     {% endfor %}
 
-    <!-- MFA Toggle -->
-    <form method="POST" action="{% url 'toggle_mfa' %}" class="flex flex-wrap gap-2 items-center mb-6">
-      {% csrf_token %}
-      {% if mfa_enabled %}
-        <input type="hidden" name="enable" value="false">
-        <button type="submit" class="px-4 py-2 bg-yellow-500 text-white rounded-md shadow hover:bg-yellow-600">Wyłącz MFA</button>
-      {% else %}
-        <input type="hidden" name="enable" value="true">
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">Włącz MFA</button>
-      {% endif %}
-       {% if request.user.mfa_secret %}
-        <a href="{% url 'reset_mfa' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition">Resetuj MFA</a>
-      {% else %}
-        <a href="{% url 'mfa_setup' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition">Konfiguruj MFA</a>
-      {% endif %}
-    </form>
-  
-    <a href="{% url 'backup_codes' %}" class="inline-block mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-  Kody zapasowe
-</a>
-
-    <!-- Zaufane urządzenia -->
-    <div class="mb-6">
-      <h3 class="text-lg font-semibold text-gray-800 mb-2">Zaufane urządzenia</h3>
-      {% if trusted_devices %}
-        <ul class="space-y-2">
-          {% for device in trusted_devices %}
-            <li class="bg-white rounded-md shadow p-3 flex justify-between items-center">
-              <div>
-                <p class="text-sm font-medium">{{ device.device_name }}</p>
-                <p class="text-xs text-gray-500">{{ device.first_seen_ip }}, {{ device.first_seen_location }}</p>
-              </div>
-              <a href="{% url 'remove_trusted_device' device.device_id %}"
-                 class="text-red-600 text-sm hover:underline">Usuń</a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-sm text-gray-600">Brak zaufanych urządzeń.</p>
-      {% endif %}
+    <!-- Sekcja MFA -->
+    <div class="bg-white rounded-xl shadow-card overflow-hidden mb-8">
+      <div class="p-5 border-b border-gray-100">
+        <h3 class="font-semibold text-gray-800">Weryfikacja dwuetapowa (MFA)</h3>
+      </div>
+      <div class="p-5">
+        <div class="flex flex-wrap gap-3 items-center">
+          {% if request.user.mfa_secret %}
+            <a href="{% url 'mfa_setup' %}" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm shadow hover:bg-blue-700 transition-colors">
+              Zobacz kod QR
+            </a>
+            <a href="{% url 'reset_mfa' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors">
+              Resetuj MFA
+            </a>
+          {% else %}
+            <a href="{% url 'mfa_setup' %}" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm shadow hover:bg-blue-700 transition-colors">
+              Konfiguruj MFA
+            </a>
+          {% endif %}
+          <a href="{% url 'backup_codes' %}" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors">
+            Kody zapasowe
+          </a>
+        </div>
+      </div>
     </div>
 
-    <div class="mb-6">
-  <h3 class="text-lg font-semibold text-gray-800 mb-2">Face ID / Klucz bezpieczeństwa</h3>
+    <!-- Zaufane urządzenia -->
+    <div class="bg-white rounded-xl shadow-card overflow-hidden mb-8">
+      <div class="p-5 border-b border-gray-100">
+        <h3 class="font-semibold text-gray-800">Zaufane urządzenia</h3>
+      </div>
+      <div class="p-5">
+        {% if trusted_devices %}
+          <ul class="divide-y divide-gray-100">
+            {% for device in trusted_devices %}
+              <li class="py-3 first:pt-0 last:pb-0">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="text-sm font-medium text-gray-800">{{ device.device_name }}</p>
+                    <p class="text-xs text-gray-500 mt-1">
+                      <span class="inline-block bg-gray-100 rounded px-1.5 py-0.5">{{ device.first_seen_ip }}</span>
+                      <span class="ml-2">{{ device.first_seen_location }}</span>
+                    </p>
+                  </div>
+                  <a href="{% url 'remove_trusted_device' device.device_id %}"
+                     class="text-red-600 hover:text-red-800 text-sm font-medium transition-colors">
+                    Usuń
+                  </a>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-600 py-2">Brak zaufanych urządzeń.</p>
+        {% endif %}
+      </div>
+    </div>
 
-  {% if user.webauthnkey_set.exists %}
-    <ul class="mb-2">
-      {% for key in user.webauthnkey_set.all %}
-        <li class="text-sm text-gray-700">{{ key.nickname|default:"Klucz WebAuthn" }} — dodany {{ key.created_at|date:"Y-m-d H:i" }}</li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="text-sm text-gray-500 mb-2">Brak dodanych kluczy WebAuthn.</p>
-  {% endif %}
+    <!-- WebAuthn -->
+    <div class="bg-white rounded-xl shadow-card overflow-hidden mb-8">
+      <div class="p-5 border-b border-gray-100">
+        <h3 class="font-semibold text-gray-800">Face ID / Klucz bezpieczeństwa</h3>
+      </div>
+      <div class="p-5">
+        {% if user.webauthnkey_set.exists %}
+          <ul class="mb-4 divide-y divide-gray-100">
+            {% for key in user.webauthnkey_set.all %}
+              <li class="py-2 first:pt-0 last:pb-0">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-gray-700">
+                    {{ key.nickname|default:"Klucz WebAuthn" }} — dodany {{ key.created_at|date:"Y-m-d H:i" }}
+                  </span>
+                  <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Aktywny</span>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-600 mb-4">Brak dodanych kluczy WebAuthn.</p>
+        {% endif %}
 
-  <button id="setup-webauthn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Dodaj klucz WebAuthn</button>
-</div>
+        <button id="setup-webauthn" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm shadow hover:bg-blue-700 transition-colors flex items-center">
+          <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+          </svg>
+          Dodaj klucz WebAuthn
+        </button>
+      </div>
+    </div>
 
-
-
-    <!-- Ostatnie logowania -->
-    <div class="grid md:grid-cols-2 gap-6">
-      <!-- Udane -->
-      <div>
-        <h4 class="text-md font-semibold text-gray-800 mb-2">Ostatnie udane logowania</h4>
-        <ul class="bg-white rounded-md shadow divide-y">
-          {% for attempt in recent_success %}
-            <li class="px-4 py-2 text-sm text-gray-700">
-              {{ attempt.timestamp|date:"Y-m-d H:i" }} – IP: {{ attempt.ip_address }}
-            </li>
-          {% endfor %}
-        </ul>
+    <!-- Historia logowań -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Udane logowania -->
+      <div class="bg-white rounded-xl shadow-card overflow-hidden">
+        <div class="p-5 border-b border-gray-100">
+          <h3 class="font-semibold text-gray-800">Ostatnie udane logowania</h3>
+        </div>
+        <div class="p-5">
+          {% if recent_success %}
+            <ul class="divide-y divide-gray-100">
+              {% for attempt in recent_success %}
+                <li class="py-2 first:pt-0 last:pb-0">
+                  <div class="text-sm text-gray-700">
+                    <div class="font-medium">{{ attempt.timestamp|date:"Y-m-d H:i" }}</div>
+                    <div class="text-xs text-gray-500 mt-1">IP: {{ attempt.ip_address }}</div>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-sm text-gray-600">Brak danych o logowaniach.</p>
+          {% endif %}
+        </div>
       </div>
 
-      <!-- Nieudane -->
-      <div>
-        <h4 class="text-md font-semibold text-gray-800 mb-2">Ostatnie nieudane logowania</h4>
-        <ul class="bg-white rounded-md shadow divide-y">
-          {% for attempt in recent_failed %}
-            <li class="px-4 py-2 text-sm text-red-700 bg-red-50">
-              {{ attempt.timestamp|date:"Y-m-d H:i" }} – IP: {{ attempt.ip_address }}
-            </li>
-          {% endfor %}
-        </ul>
+      <!-- Nieudane logowania -->
+      <div class="bg-white rounded-xl shadow-card overflow-hidden">
+        <div class="p-5 border-b border-gray-100">
+          <h3 class="font-semibold text-gray-800">Ostatnie nieudane logowania</h3>
+        </div>
+        <div class="p-5">
+          {% if recent_failed %}
+            <ul class="divide-y divide-gray-100">
+              {% for attempt in recent_failed %}
+                <li class="py-2 first:pt-0 last:pb-0">
+                  <div class="text-sm text-red-700">
+                    <div class="font-medium">{{ attempt.timestamp|date:"Y-m-d H:i" }}</div>
+                    <div class="text-xs text-red-500 mt-1">IP: {{ attempt.ip_address }}</div>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-sm text-gray-600">Brak nieudanych prób logowania.</p>
+          {% endif %}
+        </div>
       </div>
     </div>
 
   </div>
-<script>
-document.getElementById('setup-webauthn').addEventListener('click', async () => {
-  const res = await fetch('/webauthn/register/options');
-  const options = await res.json();
 
-  function base64urlToBuffer(base64url) {
-    const padding = '='.repeat((4 - base64url.length % 4) % 4);
-    const base64 = (base64url + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-    const raw = atob(base64);
-    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-  }
+  <script>
+    document.getElementById('setup-webauthn').addEventListener('click', async () => {
+      const res = await fetch('/webauthn/register/options');
+      const options = await res.json();
 
-  options.challenge = base64urlToBuffer(options.challenge);
-  options.user.id = base64urlToBuffer(options.user.id);
+      function base64urlToBuffer(base64url) {
+        const padding = '='.repeat((4 - base64url.length % 4) % 4);
+        const base64 = (base64url + padding)
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
+        const raw = atob(base64);
+        return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+      }
 
-  const cred = await navigator.credentials.create({ publicKey: options });
-    console.log("options.user.id:", options.user.id);
-  const data = {
-    id: cred.id,
-    rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
-    type: cred.type,
-    response: {
-      attestationObject: btoa(String.fromCharCode(...new Uint8Array(cred.response.attestationObject))),
-      clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(cred.response.clientDataJSON)))
-    }
-  };
+      options.challenge = base64urlToBuffer(options.challenge);
+      options.user.id = base64urlToBuffer(options.user.id);
 
-  const verify = await fetch('/webauthn/register/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
+      try {
+        const cred = await navigator.credentials.create({ publicKey: options });
 
-  const result = await verify.json();
-  if (result.success) {
-    alert("Klucz WebAuthn został dodany.");
-    window.location.reload();
-  } else {
-    alert("Błąd: " + result.error);
-  }
-});
-</script>
+        const data = {
+          id: cred.id,
+          rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
+          type: cred.type,
+          response: {
+            attestationObject: btoa(String.fromCharCode(...new Uint8Array(cred.response.attestationObject))),
+            clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(cred.response.clientDataJSON)))
+          }
+        };
+
+        const verify = await fetch('/webauthn/register/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await verify.json();
+        if (result.success) {
+          alert("Klucz WebAuthn został pomyślnie dodany.");
+          window.location.reload();
+        } else {
+          alert("Błąd: " + (result.error || "Nie udało się dodać klucza"));
+        }
+      } catch (error) {
+        console.error("Błąd WebAuthn:", error);
+        alert("Wystąpił błąd podczas konfiguracji WebAuthn: " + error.message);
+      }
+    });
+  </script>
 </body>
 </html>
