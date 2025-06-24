@@ -33,6 +33,11 @@ from django.conf import settings
 from django.urls import reverse
 import uuid
 
+from webauthn.helpers.structs import (
+    PublicKeyCredentialDescriptor,
+    PublicKeyCredentialType,
+)
+
 class LoginView(View):
     def get(self, request):
         return render(request, 'login.html')
@@ -767,7 +772,7 @@ def webauthn_register_verify(request):
 
         WebAuthnKey.objects.create(
             user=request.user,
-            credential_id=base64.urlsafe_b64encode(verified.credential_id).rstrip(b'=').decode(),
+            credential_id=base64.urlsafe_b64encode(verified.credential_id).decode(),
             public_key=base64.b64encode(verified.credential_public_key).decode(),
             sign_count=verified.sign_count,
         )
@@ -784,8 +789,15 @@ def webauthn_login_options(request):
         return JsonResponse({'error': 'Nie znaleziono użytkownika'}, status=404)
 
     keys = WebAuthnKey.objects.filter(user=user)
+
+    def pad_base64(s):
+        return s + '=' * (-len(s) % 4)
+
     allow_credentials = [
-        PublicKeyCredentialDescriptor(id=base64.urlsafe_b64decode(k.credential_id + '=='), type='public-key')
+        PublicKeyCredentialDescriptor(
+            id=base64.b64decode(pad_base64(k.credential_id)),
+            type=PublicKeyCredentialType.PUBLIC_KEY,  # <-- nie "public-key" jako string
+        )
         for k in keys
     ]
 
